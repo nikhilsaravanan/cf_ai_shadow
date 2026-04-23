@@ -59,12 +59,12 @@ Re-check both rules any time you edit `tsconfig.json`.
 
 ## Wrangler bindings — canonical names
 
-Use these exact names. Frontend and backend both depend on them.
+Convention: DO / Workflow binding `name` matches its `class_name` so `routeAgentRequest` can kebab-match URLs (`WalletAgent` → `/agents/wallet-agent/…`). Non-agent resources (KV, AI) stay uppercase.
 
 - `AI` — Workers AI
-- `RESEARCHER` — Durable Object binding → `ResearcherAgent`
-- `WALLET` — Durable Object binding → `WalletAgent`
-- `INGEST` — Workflow binding → `IngestWorkflow`
+- `ChatAgent` — Durable Object binding → `ChatAgent` class. Renamed to `ResearcherAgent` in M8 via a `renamed_classes` migration (class + binding rename together).
+- `WalletAgent` — Durable Object binding → `WalletAgent` class
+- `IngestWorkflow` — Workflow binding → `IngestWorkflow` class
 - `ABI_CACHE` — KV namespace for Etherscan ABI cache
 
 Secrets (via `wrangler secret put`):

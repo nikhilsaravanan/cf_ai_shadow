@@ -14,7 +14,7 @@ Scope/features come from `PRD.md` (authoritative). Build rails and conventions c
 - **LLM:** Workers AI, model `@cf/meta/llama-3.3-70b-instruct-fp8-fast`.
 - **Chat stack (from the guide):** `@cloudflare/ai-chat` (`AIChatAgent`, `useAgentChat` from `@cloudflare/ai-chat/react`) + `agents` (`Agent`, `routeAgentRequest`, `useAgent` from `agents/react`) + `ai` (`streamText`, `convertToModelMessages`, `tool`, `stepCountIs`) + `workers-ai-provider` (`createWorkersAI`) + `zod`.
 - **Chain client:** `viem` (mainnet only).
-- **Bindings (canonical names):** `AI`, `RESEARCHER` (DO → `ResearcherAgent`), `WALLET` (DO → `WalletAgent`), `INGEST` (Workflow → `IngestWorkflow`), `ABI_CACHE` (KV).
+- **Bindings (canonical names):** `AI` (Workers AI), `ChatAgent` (DO → `ChatAgent`; renamed to `ResearcherAgent` in M8 via a `renamed_classes` migration — binding key renames with the class), `WalletAgent` (DO → `WalletAgent`), `IngestWorkflow` (Workflow → `IngestWorkflow`), `ABI_CACHE` (KV). **Convention:** DO / Workflow binding `name` matches its `class_name` so `routeAgentRequest` kebab-matches URLs like `/agents/wallet-agent/<addr>`. KV / AI bindings stay uppercase. *(Deviation from original plan §0, which said `WALLET`/`RESEARCHER`/`INGEST`; aligned with Agents-SDK routing docs and M1's actual `ChatAgent` binding.)*
 - **DO naming:** `ResearcherAgent` name = `"default"` (MVP singleton). `WalletAgent` name = `address.toLowerCase()`.
 - **Secrets:** `ALCHEMY_API_KEY`, `ETHERSCAN_API_KEY` via `wrangler secret put`.
 - **tsconfig.json:** `target: ES2022` or newer (current `es2024` is fine; CLAUDE.md's "ES2022 / ES2021" wording will be relaxed to "ES2022+" during M0).
