@@ -23,7 +23,7 @@ describe("WalletAgent skeleton", () => {
 		expect(dossier.narrative).toMatch(/No activity ingested yet/i);
 	});
 
-	it("exposes getDossier, refresh stub, and empty recent-activity / tx lookup", async () => {
+	it("exposes getDossier and empty recent-activity / tx lookup before ingestion", async () => {
 		const id = env.WalletAgent.idFromName(VITALIK);
 		const stub = env.WalletAgent.get(id);
 
@@ -34,14 +34,21 @@ describe("WalletAgent skeleton", () => {
 			const dossier = await agent.getDossier();
 			expect(dossier.address).toBe(VITALIK);
 
-			const refresh = await agent.refresh();
-			expect(refresh).toEqual({ ok: true, stub: true });
-
 			const recent = await agent.getRecentActivity(10);
 			expect(recent).toEqual([]);
 
 			const tx = await agent.getTxByHash("0xnope");
 			expect(tx).toBeUndefined();
+		});
+	});
+
+	it("refresh() without initialize throws", async () => {
+		const id = env.WalletAgent.idFromName("uninitialized");
+		const stub = env.WalletAgent.get(id);
+
+		await runInDurableObject(stub, async (agent: WalletAgent) => {
+			await agent.setName("uninitialized");
+			await expect(agent.refresh()).rejects.toThrow(/not initialized/i);
 		});
 	});
 });

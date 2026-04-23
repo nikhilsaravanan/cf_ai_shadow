@@ -1,4 +1,6 @@
 import { Agent, callable } from "agents";
+import { fetchWalletTxs } from "./ingest/fetchTxs";
+import { decodeTx } from "./ingest/decodeTxs";
 
 export type Classification = {
 	category:
@@ -115,9 +117,60 @@ export class WalletAgent extends Agent<Env, WalletState> {
 		return this.state.dossier;
 	}
 
-	@callable({ description: "Manually trigger a refresh of this wallet's dossier. (M2 stub.)" })
-	async refresh(): Promise<{ ok: true; stub: true }> {
-		return { ok: true, stub: true };
+	@callable({ description: "Fetch, decode, and persist recent transactions for this wallet." })
+	async refresh(): Promise<{ ok: true; ingested: number; highestBlock: number }> {
+		const address = this.state.address;
+		if (!address) throw new Error("WalletAgent not initialized: call initialize(address) first");
+
+		const rawTxs = await fetchWalletTxs(this.env.ALCHEMY_API_KEY, address);
+
+		let highestBlock = this.state.lastSyncedBlock;
+		for (const tx of rawTxs) {
+			const { methodId, decodedInput } = await decodeTx(
+				tx.input,
+				tx.to,
+				this.env.ETHERSCAN_API_KEY,
+				this.env.ABI_CACHE,
+			);
+			this.sql`
+				INSERT OR REPLACE INTO transactions
+					(hash, block_number, timestamp, from_address, to_address,
+					 value_wei, method_id, decoded_input, classification)
+				VALUES
+					(${tx.hash}, ${tx.blockNumber}, ${tx.timestamp}, ${tx.from}, ${tx.to},
+					 ${tx.valueWei}, ${methodId}, ${decodedInput}, NULL)
+			`;
+			if (tx.blockNumber > highestBlock) highestBlock = tx.blockNumber;
+		}
+
+		this._recomputeCounterparties(address);
+
+		const [{ c: txCount }] = this.sql<{ c: number }>`SELECT COUNT(*) AS c FROM transactions`;
+
+		this.setState({
+			...this.state,
+			lastSyncedBlock: highestBlock,
+			txCount,
+			updatedAt: Date.now(),
+		});
+
+		return { ok: true, ingested: rawTxs.length, highestBlock };
+	}
+
+	private _recomputeCounterparties(selfAddress: string) {
+		this.sql`DELETE FROM counterparties`;
+		this.sql`
+			INSERT INTO counterparties (address, label, interaction_count, first_seen, last_seen)
+			SELECT
+				CASE WHEN from_address = ${selfAddress} THEN to_address ELSE from_address END AS address,
+				NULL AS label,
+				COUNT(*) AS interaction_count,
+				MIN(timestamp) * 1000 AS first_seen,
+				MAX(timestamp) * 1000 AS last_seen
+			FROM transactions
+			WHERE (CASE WHEN from_address = ${selfAddress} THEN to_address ELSE from_address END) IS NOT NULL
+			GROUP BY address
+		`;
 	}
 
 	@callable({ description: "Return the current dossier for this wallet." })

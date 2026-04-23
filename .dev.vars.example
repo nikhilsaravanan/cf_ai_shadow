@@ -1,0 +1,6 @@
+ALCHEMY_API_KEY=your_alchemy_api_key_here
+ETHERSCAN_API_KEY=your_etherscan_api_key_here
+
+# Set INTEGRATION=1 (and replace the placeholder keys above with real ones)
+# to enable live integration tests against Alchemy + Etherscan.
+# INTEGRATION=1

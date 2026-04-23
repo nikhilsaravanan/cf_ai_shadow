@@ -71,6 +71,18 @@ None this milestone (WalletAgent M2 is state + SQLite skeleton only; no LLM call
 
 ---
 
+## M3 — Transaction ingestion (no LLM)
+
+### Meta-prompts
+
+None this milestone — M3 executed directly from `plan.md` after a single "go". Trivial approval messages are not logged per the protocol.
+
+### Application prompts
+
+None this milestone (M3 is Alchemy + Etherscan + viem wiring; no LLM calls. Classification and summarization templates land in M4 and M5 respectively).
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 

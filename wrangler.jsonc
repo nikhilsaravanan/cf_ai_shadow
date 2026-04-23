@@ -17,6 +17,9 @@
 	"ai": {
 		"binding": "AI"
 	},
+	"kv_namespaces": [
+		{ "binding": "ABI_CACHE", "id": "90a7e6d1a274417b8310bc0f026098dc" }
+	],
 	"durable_objects": {
 		"bindings": [
 			{ "name": "ChatAgent", "class_name": "ChatAgent" },
