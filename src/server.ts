@@ -3,6 +3,8 @@ import { routeAgentRequest } from "agents";
 import { createWorkersAI } from "workers-ai-provider";
 import { streamText, convertToModelMessages } from "ai";
 
+export { WalletAgent } from "./walletAgent";
+
 const SHADOW_SYSTEM_PROMPT_M1 =
   "You are Shadow, an AI research assistant that helps users understand DeFi wallets on Ethereum mainnet. " +
   "The tool surface for querying wallets is still being built; answer general questions helpfully and, " +

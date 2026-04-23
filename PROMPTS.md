@@ -59,6 +59,18 @@ None this milestone — M1 executed directly from `plan.md` after the user appro
 
 ---
 
+## M2 — WalletAgent skeleton
+
+### Meta-prompts
+
+None this milestone — M2 executed directly from `plan.md` after a single "go". Trivial approval messages are not logged per the protocol.
+
+### Application prompts
+
+None this milestone (WalletAgent M2 is state + SQLite skeleton only; no LLM calls. Classification and summarization templates land in M4 and M5 respectively).
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 
