@@ -47,11 +47,15 @@ None this milestone.
 
 ### Meta-prompts
 
-<!-- First prompt given to Claude Code in the repo goes here. Log subsequent substantive prompts too. -->
+None this milestone — M1 executed directly from `plan.md` after the user approved the plan with a single "go". Per the PROMPTS.md protocol, trivial approval messages are not logged.
 
 ### Application prompts
 
-None this milestone (template ships with a default chat prompt; will be replaced in M8).
+- **Shadow chat system prompt (M1 placeholder).** Used by `ChatAgent.onChatMessage` in `src/server.ts` when calling `streamText` against `@cf/meta/llama-3.3-70b-instruct-fp8-fast`. Will be replaced in M8 when the `queryWallet` / `compareWallets` / `listWatched` tool surface lands.
+
+  ```
+  You are Shadow, an AI research assistant that helps users understand DeFi wallets on Ethereum mainnet. The tool surface for querying wallets is still being built; answer general questions helpfully and, when asked about a specific wallet, say that wallet-lookup tools will be wired up in a later milestone.
+  ```
 
 ---
 
