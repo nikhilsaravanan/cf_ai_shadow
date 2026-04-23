@@ -95,14 +95,14 @@ Scope/features come from `PRD.md` (authoritative). Build rails and conventions c
    - Keep `compatibility_date: "2026-04-23"` and `compatibility_flags: ["nodejs_compat"]`.
 4. Run `npx wrangler types` to regenerate `worker-configuration.d.ts` for the new bindings.
 5. Update `test/index.spec.ts` to import `server.ts` (or delete it for now; the Hello World test no longer applies). Prefer minimal edit: rename path, adjust the assertions to check routeAgentRequest fallback returns 404 for `/`.
-6. `npm run dev` and confirm: opening the dev URL works, and a manual WebSocket connection to `/agents/chat-agent/default` (kebab-cased) streams text. Detailed manual test plan to be written before running.
+6. ~~`npm run dev` and confirm a manual WebSocket connection to `/agents/chat-agent/default` streams text.~~ **Deviation (M1):** deferred to M9. A real Workers AI inference bills even in local dev (explicit warning on `wrangler dev` startup), and a hand-rolled WebSocket client is throwaway work right before M9's UI lands. Unit tests + dry-run + strict type-check cover the wiring.
 7. Run `/shadow-check`. Expectation: types pass, tests pass, wrangler dry-run passes.
 8. Append M1 block to `PROMPTS.md`: meta-prompts (user messages that drove this milestone) + application prompts (system prompt used in `streamText`, verbatim).
 9. `git add -A && git commit -m "M1: ChatAgent scaffold streaming Llama 3.3 over WebSocket"`.
 
 **Verification:**
 - `/shadow-check` green.
-- Manual: `npm run dev` → sending a chat message via the client SDK (vanilla `AgentClient` or a hand-rolled curl) produces a streamed response. (We don't have a UI yet; a minimal HTML test page can be dropped under `public/` or the check can use `AgentClient` from a node script.)
+- Live WebSocket streaming smoke check moved to M9 (see step 6).
 
 ---
 
