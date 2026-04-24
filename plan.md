@@ -246,17 +246,18 @@ Scope/features come from `PRD.md` (authoritative). Build rails and conventions c
 **Pre-conditions:** M7 green.
 
 **Steps:**
-1. Rename class `ChatAgent` → `ResearcherAgent` in `src/server.ts`. Update wrangler DO binding name to `RESEARCHER` (class `ResearcherAgent`). Add a new migration tag (do NOT mutate v1) for the class-rename path — confirm migration syntax via `cloudflare-docs` MCP.
-2. Add synced state shape `ResearcherState` (PRD §11) and `@callable()` methods: `addToWatchlist`, `removeFromWatchlist`, `getWatchlist`, `getDossier(address)`.
-3. Define three `tool`s (from the `ai` package) in `onChatMessage`:
-   - `queryWallet(address, question)` → `env.WALLET.get(idFromName(address.toLowerCase())).getDossier()` + recent activity, return structured context.
-   - `compareWallets(a, b)` → fetch both dossiers, return a side-by-side summary.
+1. Rename class `ChatAgent` → `ResearcherAgent` in `src/server.ts`. Update wrangler DO binding to `ResearcherAgent` → class `ResearcherAgent` (per §0 convention — binding name matches class_name). Add a new migration tag (do NOT mutate v1) that uses `renamed_classes: [{ from: "ChatAgent", to: "ResearcherAgent" }]`. Confirm exact migration syntax via `cloudflare-docs` MCP.
+2. **Deviation from CLAUDE.md chat stack:** pivot the chat path from `createWorkersAI({ binding: env.AI })` to `@ai-sdk/openai-compatible` pointing at Workers AI's OpenAI-compat endpoint (`https://api.cloudflare.com/client/v4/accounts/{id}/ai/v1`) with `WORKERS_AI_API_TOKEN`. Same reason as the M4 pivot — miniflare's AI binding returns `InferenceUpstreamError`. This keeps `streamText` + tool-calling intact; only the model factory changes.
+3. Add synced state shape `ResearcherState` (PRD §11) and `@callable()` methods: `addToWatchlist`, `removeFromWatchlist`, `getWatchlist`, `getDossierFor(address)`.
+4. Define three `tool`s (from the `ai` package) in `onChatMessage`:
+   - `queryWallet({ address, question })` → `env.WalletAgent.get(idFromName(address.toLowerCase())).getDossier()` + recent activity, return structured context.
+   - `compareWallets({ a, b })` → fetch both dossiers, return a side-by-side summary.
    - `listWatched()` → return `state.watchlist` with one-line headlines.
-4. Set system prompt: final text logged verbatim in `PROMPTS.md`.
-5. Update kebab-case routing URL in notes: `/agents/researcher-agent/default`.
-6. Integration test: addToWatchlist → chat "summarize this wallet" → assert the stream contains a `queryWallet` tool call event and final narrative.
-7. Append M8 block to `PROMPTS.md` with final system prompt + tool description strings.
-8. `/shadow-check` → green. `git add -A && git commit -m "M8: ResearcherAgent with queryWallet/compareWallets/listWatched LLM tools"`.
+5. Set system prompt: final text logged verbatim in `PROMPTS.md`.
+6. Update kebab-case routing URL in notes: `/agents/researcher-agent/default`.
+7. Integration test: addToWatchlist → chat "summarize this wallet" → assert the stream contains a `queryWallet` tool call event and final narrative.
+8. Append M8 block to `PROMPTS.md` with final system prompt + tool description strings.
+9. `/shadow-check` → green. `git add -A && git commit -m "M8: ResearcherAgent with queryWallet/compareWallets/listWatched LLM tools"`.
 
 **Verification:** `/shadow-check` green; integration test passes.
 
