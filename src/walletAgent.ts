@@ -66,6 +66,8 @@ const emptyDossier = (address: string): Dossier => ({
 
 const WORKFLOW_TIMEOUT_MS = 5 * 60 * 1000;
 const WORKFLOW_POLL_MS = 500;
+const SCHEDULED_REFRESH_CRON = "*/10 * * * *";
+const SCHEDULED_REFRESH_DEBOUNCE_MS = 9 * 60 * 1000;
 
 export class WalletAgent extends Agent<Env, WalletState> {
 	initialState: WalletState = {
@@ -116,7 +118,26 @@ export class WalletAgent extends Agent<Env, WalletState> {
 			dossier: { ...this.state.dossier, address: addr },
 			updatedAt: Date.now(),
 		});
+		await this.schedule(SCHEDULED_REFRESH_CRON, "scheduledRefresh");
 		return this.state.dossier;
+	}
+
+	async scheduledRefresh(): Promise<void> {
+		const address = this.state.address;
+		if (!address) return;
+		const sinceLast = Date.now() - this.state.updatedAt;
+		if (sinceLast < SCHEDULED_REFRESH_DEBOUNCE_MS) {
+			console.log(
+				`[WalletAgent:${address}] scheduledRefresh skipped — last update ${Math.round(sinceLast / 1000)}s ago`,
+			);
+			return;
+		}
+		console.log(`[WalletAgent:${address}] scheduledRefresh firing`);
+		try {
+			await this.refresh();
+		} catch (e) {
+			console.error(`[WalletAgent:${address}] scheduledRefresh failed:`, e);
+		}
 	}
 
 	@callable({

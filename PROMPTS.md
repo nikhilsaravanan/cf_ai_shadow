@@ -198,6 +198,18 @@ None this milestone — M6 moves the existing classify (M4) and summarize (M5) c
 
 ---
 
+## M7 — Scheduled refresh
+
+### Meta-prompts
+
+None this milestone — M7 executed directly from `plan.md` after a single "go". Trivial approval messages are not logged per the protocol.
+
+### Application prompts
+
+None this milestone — M7 wires `this.schedule("*/10 * * * *", "scheduledRefresh")` inside `WalletAgent.initialize()`. `scheduledRefresh()` debounces on `state.updatedAt < 9min` and otherwise calls `refresh()`, which triggers the existing `IngestWorkflow`. No new LLM calls introduced.
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 
