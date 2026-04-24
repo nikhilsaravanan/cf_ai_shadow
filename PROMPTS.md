@@ -258,6 +258,18 @@ None this milestone — M8 executed directly from `plan.md` after a single "go".
 
 ---
 
+## M9 — Frontend (React + Vite + Tailwind)
+
+### Meta-prompts
+
+None this milestone — M9 executed directly from `plan.md` after a single "go". Trivial approval messages are not logged per the protocol.
+
+### Application prompts
+
+None this milestone — M9 is UI-only (React panels wired to `useAgent` + `useAgentChat`). No new LLM calls introduced; the chat system prompt and tool descriptions from M8 are reused verbatim.
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 
