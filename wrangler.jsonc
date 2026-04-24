@@ -29,6 +29,9 @@
 			{ "name": "WalletAgent", "class_name": "WalletAgent" }
 		]
 	},
+	"workflows": [
+		{ "binding": "IngestWorkflow", "name": "ingest-workflow", "class_name": "IngestWorkflow" }
+	],
 	"migrations": [
 		{ "tag": "v1", "new_sqlite_classes": ["ChatAgent"] },
 		{ "tag": "v2", "new_sqlite_classes": ["WalletAgent"] }

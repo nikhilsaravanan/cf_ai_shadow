@@ -31,7 +31,8 @@ describe.skipIf(!INTEGRATION || !HAS_SECRETS)("WalletAgent ingestion (live)", ()
 		});
 
 		expect(result.refresh.ok).toBe(true);
-		expect(result.refresh.ingested).toBeGreaterThanOrEqual(10);
+		expect(result.refresh.instanceId).toMatch(/\S/);
+		expect(result.refresh.txCount).toBeGreaterThanOrEqual(10);
 		expect(result.refresh.dossierVersion).toBeGreaterThanOrEqual(1);
 		expect(result.recent.length).toBeGreaterThanOrEqual(10);
 

@@ -1,8 +1,20 @@
 import type { AiCreds } from "./classifyTxs";
-import type { RiskFlag } from "../walletAgent";
+import type { Classification, RiskFlag } from "../walletAgent";
 
 const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const MAX_TOKENS = 1500;
+
+export type ClassifiedTx = {
+	hash: string;
+	blockNumber: number;
+	timestamp: number;
+	from: string;
+	to: string | null;
+	valueWei: string;
+	methodId: string | null;
+	decodedInput: string | null;
+	classification: Classification | null;
+};
 
 export type Aggregations = {
 	totalTxs: number;
@@ -31,6 +43,83 @@ export type SummaryOutput = {
 };
 
 const VALID_SEVERITIES = ["info", "warn", "high"] as const;
+
+function valueEthOf(wei: string): string {
+	try {
+		return (Number(BigInt(wei)) / 1e18).toFixed(6);
+	} catch {
+		return "0";
+	}
+}
+
+export function aggregateClassified(selfAddress: string, txs: ClassifiedTx[]): Aggregations {
+	let firstSeen = Number.POSITIVE_INFINITY;
+	let lastSeen = 0;
+	const categoryCounts: Record<string, number> = {};
+	const protocolCounts = new Map<string, number>();
+	const counterpartyCounts = new Map<string, number>();
+
+	for (const t of txs) {
+		if (t.timestamp > 0) {
+			if (t.timestamp < firstSeen) firstSeen = t.timestamp;
+			if (t.timestamp > lastSeen) lastSeen = t.timestamp;
+		}
+		if (t.classification) {
+			const cat = t.classification.category;
+			categoryCounts[cat] = (categoryCounts[cat] ?? 0) + 1;
+			if (t.classification.protocol) {
+				const p = t.classification.protocol;
+				protocolCounts.set(p, (protocolCounts.get(p) ?? 0) + 1);
+			}
+		}
+		const cp = t.from === selfAddress ? t.to : t.from;
+		if (cp) counterpartyCounts.set(cp, (counterpartyCounts.get(cp) ?? 0) + 1);
+	}
+
+	const topProtocols = [...protocolCounts.entries()]
+		.sort((a, b) => b[1] - a[1])
+		.slice(0, 5)
+		.map(([protocol, c]) => ({ protocol, interactionCount: c }));
+
+	const topCounterparties = [...counterpartyCounts.entries()]
+		.sort((a, b) => b[1] - a[1])
+		.slice(0, 5)
+		.map(([address, c]) => ({ address, count: c }));
+
+	return {
+		totalTxs: txs.length,
+		classifiedTxs: txs.filter((t) => t.classification !== null).length,
+		firstSeen: firstSeen === Number.POSITIVE_INFINITY ? 0 : firstSeen,
+		lastSeen,
+		categoryCounts,
+		topProtocols,
+		topCounterparties,
+	};
+}
+
+export function sampleForSummary(
+	selfAddress: string,
+	txs: ClassifiedTx[],
+	limit: number,
+): SampleTx[] {
+	return txs
+		.filter((t) => t.classification !== null)
+		.slice()
+		.sort((a, b) => b.blockNumber - a.blockNumber)
+		.slice(0, limit)
+		.map((t) => {
+			const outgoing = t.from === selfAddress;
+			return {
+				hash: t.hash,
+				direction: outgoing ? ("out" as const) : ("in" as const),
+				counterparty: outgoing ? t.to : t.from,
+				valueEth: valueEthOf(t.valueWei),
+				category: t.classification?.category ?? null,
+				protocol: t.classification?.protocol ?? null,
+				notes: t.classification?.notes ?? null,
+			};
+		});
+}
 
 export const SUMMARIZATION_SYSTEM_PROMPT = `You are writing a wallet dossier for a DeFi research tool. Given transaction aggregations and a sample of recent activity for an Ethereum mainnet wallet, produce three fields:
 

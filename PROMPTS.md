@@ -186,6 +186,18 @@ None this milestone — M5 executed directly from `plan.md` after a single "go".
 
 ---
 
+## M6 — Durable ingestion via IngestWorkflow
+
+### Meta-prompts
+
+None this milestone — M6 executed directly from `plan.md` after a single "go". A mid-milestone plan amendment (`aff9b4b`) fixed §0-convention drift on the Workflow/DO binding names; no user meta-prompt drove it.
+
+### Application prompts
+
+None this milestone — M6 moves the existing classify (M4) and summarize (M5) calls from `WalletAgent.refresh()` into `IngestWorkflow`'s `classify` and `summarize` steps. The application prompts themselves are unchanged (logged under M4 and M5). No new LLM calls introduced.
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 
