@@ -16,7 +16,9 @@ Scope/features come from `PRD.md` (authoritative). Build rails and conventions c
 - **Chain client:** `viem` (mainnet only).
 - **Bindings (canonical names):** `AI` (Workers AI), `ChatAgent` (DO → `ChatAgent`; renamed to `ResearcherAgent` in M8 via a `renamed_classes` migration — binding key renames with the class), `WalletAgent` (DO → `WalletAgent`), `IngestWorkflow` (Workflow → `IngestWorkflow`), `ABI_CACHE` (KV). **Convention:** DO / Workflow binding `name` matches its `class_name` so `routeAgentRequest` kebab-matches URLs like `/agents/wallet-agent/<addr>`. KV / AI bindings stay uppercase. *(Deviation from original plan §0, which said `WALLET`/`RESEARCHER`/`INGEST`; aligned with Agents-SDK routing docs and M1's actual `ChatAgent` binding.)*
 - **DO naming:** `ResearcherAgent` name = `"default"` (MVP singleton). `WalletAgent` name = `address.toLowerCase()`.
-- **Secrets:** `ALCHEMY_API_KEY`, `ETHERSCAN_API_KEY` via `wrangler secret put`.
+- **Secrets:** `ALCHEMY_API_KEY`, `ETHERSCAN_API_KEY`, `WORKERS_AI_API_TOKEN` via `wrangler secret put`.
+- **Vars (non-secret):** `CLOUDFLARE_ACCOUNT_ID` in `wrangler.jsonc` `vars` — needed for REST-based Workers AI calls (see deviation below).
+- **Workers AI invocation (M4/M8 deviation from CLAUDE.md):** Shadow calls Workers AI via `fetch()` to `POST https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{model}` with `Authorization: Bearer ${WORKERS_AI_API_TOKEN}`, **not** `env.AI.run()` and **not** `workers-ai-provider` + the AI binding. Reason: miniflare's AI binding proxy returns `InferenceUpstreamError` against this account in both `wrangler dev` and `@cloudflare/vitest-pool-workers`, even with `remote: true` set — a direct REST call with an API token works. The `env.AI` binding stays declared in `wrangler.jsonc` so we can switch back once the miniflare proxy is fixed, but is unused at runtime. The M1 chat path (`createWorkersAI({ binding: env.AI })`) will also need this pivot at M8.
 - **tsconfig.json:** `target: ES2022` or newer (current `es2024` is fine; CLAUDE.md's "ES2022 / ES2021" wording will be relaxed to "ES2022+" during M0).
 - **Decorators:** TC39 syntax. Do **not** enable `experimentalDecorators`.
 - **Pre-commit verification:** `/shadow-check` at each milestone boundary. No skipping.
@@ -161,10 +163,10 @@ Scope/features come from `PRD.md` (authoritative). Build rails and conventions c
 
 **Goal:** Every tx row gets a `classification` column populated with a `{ category, protocol?, notes }` object, produced by Llama 3.3 with JSON-mode prompting, batched 10 at a time.
 
-**Pre-conditions:** M3 green.
+**Pre-conditions:** M3 green. `WORKERS_AI_API_TOKEN` in `.dev.vars` (Cloudflare API token scoped to Workers AI). `CLOUDFLARE_ACCOUNT_ID` set as a `var` in `wrangler.jsonc`.
 
 **Steps:**
-1. Create `src/ingest/classifyTxs.ts`: takes a batch of 10 decoded txs, builds a prompt that asks Llama 3.3 to emit a JSON array of classifications (one per tx, in order).
+1. Create `src/ingest/classifyTxs.ts`: takes a batch of 10 decoded txs, builds a prompt that asks Llama 3.3 to emit a JSON array of classifications (one per tx, in order). **Deviation:** calls Workers AI via `fetch()` to the REST endpoint with `WORKERS_AI_API_TOKEN`, not `env.AI.run()` (see §0 deviation note — miniflare's AI binding returns `InferenceUpstreamError` in both `wrangler dev` and vitest-pool-workers; REST call works).
 2. Add a defensive JSON parser: strip code fences, retry once on parse failure with an explicit "return only raw JSON" instruction.
 3. In `WalletAgent.refresh()`, after decode, loop batches of 10 through `classifyTxs` and persist results onto each row.
 4. Application prompt goes in `PROMPTS.md` **verbatim** (this is a graded artifact).
