@@ -203,16 +203,16 @@ Scope/features come from `PRD.md` (authoritative). Build rails and conventions c
 
 ## M6 — Durable ingestion via `IngestWorkflow`
 
-**Goal:** Extract M3–M5 from `WalletAgent.refresh()` into a Cloudflare Workflow. `WalletAgent` triggers the workflow on `initialize()` and `refresh()`. A mid-run kill (SIGINT in dev) resumes from the last successful `step.do`.
+**Goal:** Extract M3–M5 from `WalletAgent.refresh()` into a Cloudflare Workflow. `WalletAgent.refresh()` triggers the workflow and awaits completion. A mid-run kill (SIGINT in dev) resumes from the last successful `step.do`.
 
 **Pre-conditions:** M5 green.
 
 **Steps:**
-1. Via `cloudflare-docs` MCP: confirm the current class name and wrangler binding shape for Cloudflare Workflows (`WorkflowEntrypoint` vs `AgentWorkflow`). Pin the answer in CLAUDE.md before writing code.
+1. Via `cloudflare-docs` MCP: confirm the current class name and wrangler binding shape for Cloudflare Workflows. Confirmed at M6 start: `WorkflowEntrypoint` from `cloudflare:workers`, wrangler `workflows: [{ binding, name, class_name }]`, trigger via `env.IngestWorkflow.create({ id?, params })`.
 2. Create `src/ingest/workflow.ts`: `class IngestWorkflow extends WorkflowEntrypoint<Env, { address: string }>` with steps `fetch-txs`, `decode`, `classify`, `summarize`, `persist`, mirroring PRD §6.3.
-3. Add `INGEST` workflow binding to `wrangler.jsonc`.
-4. `WalletAgent.refresh()` now calls `this.env.INGEST.create({ params: { address: this.state.address } })` instead of running the steps inline.
-5. `IngestWorkflow.persist` step calls back into the `WalletAgent` via DO RPC (`env.WALLET.get(idFromName(address)).applyDossier(dossier, txs)`). Add an `applyDossier(dossier, txs)` method to `WalletAgent`.
+3. Add `IngestWorkflow` workflow binding to `wrangler.jsonc` (per §0 convention: binding `name` matches `class_name`).
+4. `WalletAgent.refresh()` now calls `this.env.IngestWorkflow.create({ params: { address: this.state.address } })` instead of running the steps inline, then polls `instance.status()` until complete.
+5. `IngestWorkflow.persist` step calls back into the `WalletAgent` via DO RPC (`env.WalletAgent.get(idFromName(address)).applyDossier(input)`). Add an `applyDossier(input)` method to `WalletAgent` that takes `{ txs, summary, aggregations, highestBlock }` and writes rows/state. Aggregation moves out of the DO into pure functions in `src/ingest/summarizeDossier.ts` (the workflow has the in-memory tx list; DO SQL is private).
 6. Verify durability: run an integration test that starts a workflow, kills `wrangler dev` between `classify` and `summarize`, restarts, and asserts `persist` still runs. Document the test procedure in a comment.
 7. Append M6 block to `PROMPTS.md`.
 8. `/shadow-check` → green. `git add -A && git commit -m "M6: extract ingestion into IngestWorkflow (resumable across reboots)"`.
