@@ -1,6 +1,7 @@
 import { Agent, callable } from "agents";
 import { fetchWalletTxs } from "./ingest/fetchTxs";
 import { decodeTx } from "./ingest/decodeTxs";
+import { classifyTxs, type TxToClassify } from "./ingest/classifyTxs";
 
 export type Classification = {
 	category:
@@ -117,28 +118,82 @@ export class WalletAgent extends Agent<Env, WalletState> {
 		return this.state.dossier;
 	}
 
-	@callable({ description: "Fetch, decode, and persist recent transactions for this wallet." })
-	async refresh(): Promise<{ ok: true; ingested: number; highestBlock: number }> {
+	@callable({
+		description: "Fetch, decode, classify, and persist recent transactions for this wallet.",
+	})
+	async refresh(): Promise<{
+		ok: true;
+		ingested: number;
+		classified: number;
+		highestBlock: number;
+	}> {
 		const address = this.state.address;
 		if (!address) throw new Error("WalletAgent not initialized: call initialize(address) first");
 
 		const rawTxs = await fetchWalletTxs(this.env.ALCHEMY_API_KEY, address);
 
-		let highestBlock = this.state.lastSyncedBlock;
+		const decoded: {
+			hash: string;
+			blockNumber: number;
+			timestamp: number;
+			from: string;
+			to: string | null;
+			valueWei: string;
+			methodId: string | null;
+			decodedInput: string | null;
+		}[] = [];
 		for (const tx of rawTxs) {
-			const { methodId, decodedInput } = await decodeTx(
+			const d = await decodeTx(
 				tx.input,
 				tx.to,
 				this.env.ETHERSCAN_API_KEY,
 				this.env.ABI_CACHE,
 			);
+			decoded.push({
+				hash: tx.hash,
+				blockNumber: tx.blockNumber,
+				timestamp: tx.timestamp,
+				from: tx.from,
+				to: tx.to,
+				valueWei: tx.valueWei,
+				methodId: d.methodId,
+				decodedInput: d.decodedInput,
+			});
+		}
+
+		const toClassify: TxToClassify[] = decoded.map((d) => ({
+			to: d.to,
+			from: d.from,
+			valueWei: d.valueWei,
+			methodId: d.methodId,
+			decodedInput: d.decodedInput,
+		}));
+		const classifications =
+			decoded.length > 0
+				? await classifyTxs(
+						{
+							accountId: this.env.CLOUDFLARE_ACCOUNT_ID,
+							apiToken: this.env.WORKERS_AI_API_TOKEN,
+						},
+						address,
+						toClassify,
+					)
+				: [];
+
+		let highestBlock = this.state.lastSyncedBlock;
+		let classifiedCount = 0;
+		for (let i = 0; i < decoded.length; i++) {
+			const tx = decoded[i];
+			const cls = classifications[i] ?? null;
+			const clsJson = cls ? JSON.stringify(cls) : null;
+			if (clsJson) classifiedCount++;
 			this.sql`
 				INSERT OR REPLACE INTO transactions
 					(hash, block_number, timestamp, from_address, to_address,
 					 value_wei, method_id, decoded_input, classification)
 				VALUES
 					(${tx.hash}, ${tx.blockNumber}, ${tx.timestamp}, ${tx.from}, ${tx.to},
-					 ${tx.valueWei}, ${methodId}, ${decodedInput}, NULL)
+					 ${tx.valueWei}, ${tx.methodId}, ${tx.decodedInput}, ${clsJson})
 			`;
 			if (tx.blockNumber > highestBlock) highestBlock = tx.blockNumber;
 		}
@@ -154,7 +209,7 @@ export class WalletAgent extends Agent<Env, WalletState> {
 			updatedAt: Date.now(),
 		});
 
-		return { ok: true, ingested: rawTxs.length, highestBlock };
+		return { ok: true, ingested: rawTxs.length, classified: classifiedCount, highestBlock };
 	}
 
 	private _recomputeCounterparties(selfAddress: string) {

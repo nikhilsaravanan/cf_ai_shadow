@@ -1,6 +1,11 @@
 ALCHEMY_API_KEY=your_alchemy_api_key_here
 ETHERSCAN_API_KEY=your_etherscan_api_key_here
 
+# Cloudflare API token scoped to Workers AI > Run. Used by Shadow's
+# classifier (and, eventually, chat) instead of env.AI.run because
+# miniflare's AI binding proxy is broken for this account.
+WORKERS_AI_API_TOKEN=your_workers_ai_api_token_here
+
 # Set INTEGRATION=1 (and replace the placeholder keys above with real ones)
-# to enable live integration tests against Alchemy + Etherscan.
+# to enable live integration tests against Alchemy + Etherscan + Workers AI.
 # INTEGRATION=1

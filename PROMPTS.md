@@ -83,6 +83,55 @@ None this milestone (M3 is Alchemy + Etherscan + viem wiring; no LLM calls. Clas
 
 ---
 
+## M4 — Classify txs with Llama 3.3
+
+### Meta-prompts
+
+None this milestone — M4 executed directly from `plan.md` after a single "go". A mid-milestone pivot (see `plan: pivot Workers AI invocation from env.AI.run to REST fetch`, commit `59a4803`) was triggered by the miniflare AI-binding bug and was committed as a separate plan amendment per the deviation policy; no new user meta-prompt drove it.
+
+### Application prompts
+
+- **Classification system prompt (M4).** Used by `classifyTxs` in `src/ingest/classifyTxs.ts` when calling `@cf/meta/llama-3.3-70b-instruct-fp8-fast` via the Cloudflare Workers AI REST endpoint. Batched 10 txs at a time; retried once on parse failure with an explicit "return only raw JSON" reminder appended to the user turn.
+
+  ```
+  You are classifying Ethereum transactions for a DeFi wallet research tool. For each transaction, produce:
+  - category: exactly one of "swap", "lp", "lending", "transfer", "bridge", "governance", "airdrop", "mint", "other"
+  - protocol: the DeFi protocol name (e.g., "Uniswap V3", "Aave V3", "Curve", "1inch", "Lido", "OpenSea") or null if unknown or not applicable
+  - notes: a one-sentence description of what happened (max 20 words)
+
+  Category definitions:
+  - swap: token-for-token exchange on a DEX (Uniswap, Curve, 1inch, SushiSwap, CoW, 0x, Paraswap)
+  - lp: adding or removing liquidity from an AMM pool
+  - lending: deposit, borrow, repay, or withdraw on a lending protocol (Aave, Compound, Spark, Morpho)
+  - transfer: plain ETH or ERC-20 transfer with no contract method call of interest
+  - bridge: cross-chain bridge deposit or withdrawal (Arbitrum, Optimism, Base canonical bridges; Wormhole; Across; Hop; Stargate)
+  - governance: DAO vote, delegate, queue, or execute proposal
+  - airdrop: claiming a token airdrop (claim / merkleClaim style methods)
+  - mint: minting an NFT or token (ERC-721/1155 mint, or fresh ERC-20 mint)
+  - other: does not fit the above categories
+
+  If decoded_input is null or the counterparty is unknown, infer from method_id and value. When unsure, use category "other" with protocol null — do not guess a protocol.
+  ```
+
+- **Classification user-turn template (M4).** Rendered per batch with `selfAddress` and the list of decoded txs as JSON:
+
+  ```
+  Wallet under analysis: {selfAddress}
+
+  Classify these {N} transactions. Return a JSON array with exactly {N} objects, one per input transaction in the same order. Each object must have exactly these keys: category, protocol, notes. Return ONLY the JSON array — no prose, no code fences, no markdown.
+
+  Transactions:
+  {JSON.stringify(items, null, 2)}
+  ```
+
+  On retry (attempt 2), the following reminder is appended to the user turn:
+
+  ```
+  Return ONLY raw JSON, no code fences, no commentary, no keys other than category/protocol/notes.
+  ```
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 

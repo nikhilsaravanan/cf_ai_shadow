@@ -11,10 +11,13 @@ const HAS_SECRETS =
 	!env.ALCHEMY_API_KEY.startsWith("your_") &&
 	typeof env.ETHERSCAN_API_KEY === "string" &&
 	env.ETHERSCAN_API_KEY.length > 0 &&
-	!env.ETHERSCAN_API_KEY.startsWith("your_");
+	!env.ETHERSCAN_API_KEY.startsWith("your_") &&
+	typeof env.WORKERS_AI_API_TOKEN === "string" &&
+	env.WORKERS_AI_API_TOKEN.length > 0 &&
+	!env.WORKERS_AI_API_TOKEN.startsWith("your_");
 
 describe.skipIf(!INTEGRATION || !HAS_SECRETS)("WalletAgent ingestion (live)", () => {
-	it("refresh() pulls and persists at least 10 txs for Vitalik", async () => {
+	it("refresh() pulls, classifies, and persists at least 10 txs for Vitalik", async () => {
 		const id = env.WalletAgent.idFromName(VITALIK);
 		const stub = env.WalletAgent.get(id);
 
@@ -22,7 +25,7 @@ describe.skipIf(!INTEGRATION || !HAS_SECRETS)("WalletAgent ingestion (live)", ()
 			await agent.setName(VITALIK);
 			await agent.initialize(VITALIK);
 			const refresh = await agent.refresh();
-			const recent = await agent.getRecentActivity(25);
+			const recent = await agent.getRecentActivity(50);
 			return { refresh, recent };
 		});
 
@@ -34,6 +37,14 @@ describe.skipIf(!INTEGRATION || !HAS_SECRETS)("WalletAgent ingestion (live)", ()
 		expect(first.hash).toMatch(/^0x[0-9a-f]{64}$/);
 		expect(first.block_number).toBeGreaterThan(0);
 		expect(first.from_address).toMatch(/^0x[0-9a-f]{40}$/);
-		expect(first.classification).toBeNull();
-	}, 60_000);
+
+		const classified = result.recent.filter((t) => t.classification !== null).length;
+		expect(classified / result.recent.length).toBeGreaterThanOrEqual(0.8);
+
+		const sample = result.recent.find((t) => t.classification !== null);
+		expect(sample).toBeDefined();
+		const parsed = JSON.parse(sample!.classification!);
+		expect(typeof parsed.category).toBe("string");
+		expect(typeof parsed.notes).toBe("string");
+	}, 120_000);
 });
