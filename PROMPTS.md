@@ -210,6 +210,54 @@ None this milestone — M7 wires `this.schedule("*/10 * * * *", "scheduledRefres
 
 ---
 
+## M8 — ResearcherAgent + LLM tools
+
+### Meta-prompts
+
+None this milestone — M8 executed directly from `plan.md` after a single "go". A mid-milestone plan amendment (`de034f0`) fixed §0-convention drift on the DO binding names and pinned the chat-path pivot pre-flagged by the M4 deviation (workers-ai-provider + `env.AI` → `@ai-sdk/openai-compatible` + REST); no user meta-prompt drove it.
+
+### Application prompts
+
+- **Shadow chat system prompt (M8).** Used by `ResearcherAgent.onChatMessage` in `src/server.ts`. Sent via `streamText` through `@ai-sdk/openai-compatible` hitting `https://api.cloudflare.com/client/v4/accounts/{id}/ai/v1/chat/completions` with model `@cf/meta/llama-3.3-70b-instruct-fp8-fast`. Replaces the M1 placeholder.
+
+  ```
+  You are Shadow, an AI research assistant that helps users understand DeFi wallets on Ethereum mainnet.
+
+  You have three tools:
+  - queryWallet({ address }) — fetch the live dossier + recent transactions for a specific wallet. Call this BEFORE making any claim about a specific wallet's on-chain activity; never answer from guesses or training data when a wallet is named.
+  - compareWallets({ a, b }) — fetch two dossiers and return them side by side.
+  - listWatched() — list the addresses currently in the user's watchlist.
+
+  Rules:
+  - The user's watchlist is synced state. If they ask "what am I watching?" or "summarize my watchlist", call listWatched first.
+  - When the user names a wallet (even an ENS-style nickname), call queryWallet and base your answer on the returned dossier and recent activity.
+  - When citing numbers, counts, protocols, or counterparties, only cite what the tool returned — do not invent.
+  - If the dossier is empty ("No activity ingested yet"), tell the user the wallet hasn't been ingested yet and suggest adding it to the watchlist.
+  - Keep replies concise (3-6 sentences) unless the user asks for detail.
+  ```
+
+- **Tool descriptions (M8).** Included in every chat turn's tool catalog sent to Llama.
+
+  `queryWallet`:
+  ```
+  Fetch the dossier and 10 most recent classified transactions for a single Ethereum wallet. Use this before making any claim about what a specific wallet does on-chain.
+  ```
+  Input schema: `{ address: string (0x-prefixed, 40 hex chars) }`.
+
+  `compareWallets`:
+  ```
+  Fetch dossiers for two wallets and return a side-by-side comparison of their strategy tags, categories, top protocols, and risk flags.
+  ```
+  Input schema: `{ a: string, b: string }` (both Ethereum addresses).
+
+  `listWatched`:
+  ```
+  Return the user's watchlist: addresses, labels, and a one-line headline (strategy tags + narrative preview) for each.
+  ```
+  Input schema: `{}` (no args).
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 

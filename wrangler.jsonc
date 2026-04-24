@@ -25,7 +25,7 @@
 	],
 	"durable_objects": {
 		"bindings": [
-			{ "name": "ChatAgent", "class_name": "ChatAgent" },
+			{ "name": "ResearcherAgent", "class_name": "ResearcherAgent" },
 			{ "name": "WalletAgent", "class_name": "WalletAgent" }
 		]
 	},
@@ -34,6 +34,7 @@
 	],
 	"migrations": [
 		{ "tag": "v1", "new_sqlite_classes": ["ChatAgent"] },
-		{ "tag": "v2", "new_sqlite_classes": ["WalletAgent"] }
+		{ "tag": "v2", "new_sqlite_classes": ["WalletAgent"] },
+		{ "tag": "v3", "renamed_classes": [{ "from": "ChatAgent", "to": "ResearcherAgent" }] }
 	]
 }
