@@ -2,6 +2,11 @@ import { Agent, callable } from "agents";
 import { fetchWalletTxs } from "./ingest/fetchTxs";
 import { decodeTx } from "./ingest/decodeTxs";
 import { classifyTxs, type TxToClassify } from "./ingest/classifyTxs";
+import {
+	summarizeDossier,
+	type Aggregations,
+	type SampleTx,
+} from "./ingest/summarizeDossier";
 
 export type Classification = {
 	category:
@@ -119,13 +124,15 @@ export class WalletAgent extends Agent<Env, WalletState> {
 	}
 
 	@callable({
-		description: "Fetch, decode, classify, and persist recent transactions for this wallet.",
+		description:
+			"Fetch, decode, classify, persist, and summarize recent transactions for this wallet.",
 	})
 	async refresh(): Promise<{
 		ok: true;
 		ingested: number;
 		classified: number;
 		highestBlock: number;
+		dossierVersion: number;
 	}> {
 		const address = this.state.address;
 		if (!address) throw new Error("WalletAgent not initialized: call initialize(address) first");
@@ -202,14 +209,163 @@ export class WalletAgent extends Agent<Env, WalletState> {
 
 		const [{ c: txCount }] = this.sql<{ c: number }>`SELECT COUNT(*) AS c FROM transactions`;
 
+		const aggregations = this._aggregate();
+		const samples = this._sampleForSummary(address, 20);
+		const creds = {
+			accountId: this.env.CLOUDFLARE_ACCOUNT_ID,
+			apiToken: this.env.WORKERS_AI_API_TOKEN,
+		};
+		const summary =
+			aggregations.totalTxs > 0
+				? await summarizeDossier(creds, address, aggregations, samples)
+				: null;
+
+		const nextDossier: Dossier = summary
+			? {
+					version: this.state.dossier.version + 1,
+					address,
+					strategyTags: summary.strategyTags,
+					narrative: summary.narrative,
+					riskFlags: summary.riskFlags,
+					topProtocols: aggregations.topProtocols,
+					topCounterparties: aggregations.topCounterparties,
+					generatedAt: Date.now(),
+				}
+			: {
+					...this.state.dossier,
+					address,
+					topProtocols: aggregations.topProtocols,
+					topCounterparties: aggregations.topCounterparties,
+					generatedAt: Date.now(),
+				};
+
 		this.setState({
 			...this.state,
 			lastSyncedBlock: highestBlock,
 			txCount,
 			updatedAt: Date.now(),
+			dossier: nextDossier,
 		});
 
-		return { ok: true, ingested: rawTxs.length, classified: classifiedCount, highestBlock };
+		return {
+			ok: true,
+			ingested: rawTxs.length,
+			classified: classifiedCount,
+			highestBlock,
+			dossierVersion: nextDossier.version,
+		};
+	}
+
+	private _aggregate(): Aggregations {
+		const [stats] = this.sql<{
+			total: number;
+			classified: number;
+			first: number | null;
+			last: number | null;
+		}>`
+			SELECT
+				COUNT(*) AS total,
+				SUM(CASE WHEN classification IS NOT NULL THEN 1 ELSE 0 END) AS classified,
+				MIN(timestamp) AS first,
+				MAX(timestamp) AS last
+			FROM transactions
+		`;
+
+		const catRows = this.sql<{ cat: string; c: number }>`
+			SELECT json_extract(classification, '$.category') AS cat, COUNT(*) AS c
+			FROM transactions
+			WHERE classification IS NOT NULL
+			GROUP BY cat
+		`;
+		const categoryCounts: Record<string, number> = {};
+		for (const r of catRows) {
+			if (r.cat) categoryCounts[r.cat] = r.c;
+		}
+
+		const protoRows = this.sql<{ protocol: string; c: number }>`
+			SELECT json_extract(classification, '$.protocol') AS protocol, COUNT(*) AS c
+			FROM transactions
+			WHERE classification IS NOT NULL
+			  AND json_extract(classification, '$.protocol') IS NOT NULL
+			GROUP BY protocol
+			ORDER BY c DESC
+			LIMIT 5
+		`;
+		const topProtocols = Array.from(protoRows).map((r) => ({
+			protocol: r.protocol,
+			interactionCount: r.c,
+		}));
+
+		const cpRows = this.sql<{ address: string; label: string | null; c: number }>`
+			SELECT address, label, interaction_count AS c
+			FROM counterparties
+			ORDER BY interaction_count DESC
+			LIMIT 5
+		`;
+		const topCounterparties = Array.from(cpRows).map((r) => ({
+			address: r.address,
+			label: r.label ?? undefined,
+			count: r.c,
+		}));
+
+		return {
+			totalTxs: stats?.total ?? 0,
+			classifiedTxs: stats?.classified ?? 0,
+			firstSeen: stats?.first ?? 0,
+			lastSeen: stats?.last ?? 0,
+			categoryCounts,
+			topProtocols,
+			topCounterparties,
+		};
+	}
+
+	private _sampleForSummary(selfAddress: string, limit: number): SampleTx[] {
+		const rows = this.sql<{
+			hash: string;
+			from_address: string;
+			to_address: string | null;
+			value_wei: string;
+			classification: string | null;
+		}>`
+			SELECT hash, from_address, to_address, value_wei, classification
+			FROM transactions
+			WHERE classification IS NOT NULL
+			ORDER BY block_number DESC
+			LIMIT ${limit}
+		`;
+		const out: SampleTx[] = [];
+		for (const r of rows) {
+			let category: string | null = null;
+			let protocol: string | null = null;
+			let notes: string | null = null;
+			if (r.classification) {
+				try {
+					const parsed = JSON.parse(r.classification) as Classification;
+					category = parsed.category;
+					protocol = parsed.protocol ?? null;
+					notes = parsed.notes ?? null;
+				} catch {
+					// ignore parse errors
+				}
+			}
+			const outgoing = r.from_address === selfAddress;
+			let valueEth = "0";
+			try {
+				valueEth = (Number(BigInt(r.value_wei)) / 1e18).toFixed(6);
+			} catch {
+				// keep default
+			}
+			out.push({
+				hash: r.hash,
+				direction: outgoing ? "out" : "in",
+				counterparty: outgoing ? r.to_address : r.from_address,
+				valueEth,
+				category,
+				protocol,
+				notes,
+			});
+		}
+		return out;
 	}
 
 	private _recomputeCounterparties(selfAddress: string) {

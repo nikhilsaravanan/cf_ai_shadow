@@ -17,7 +17,7 @@ const HAS_SECRETS =
 	!env.WORKERS_AI_API_TOKEN.startsWith("your_");
 
 describe.skipIf(!INTEGRATION || !HAS_SECRETS)("WalletAgent ingestion (live)", () => {
-	it("refresh() pulls, classifies, and persists at least 10 txs for Vitalik", async () => {
+	it("refresh() ingests, classifies, and summarizes Vitalik's wallet", async () => {
 		const id = env.WalletAgent.idFromName(VITALIK);
 		const stub = env.WalletAgent.get(id);
 
@@ -26,11 +26,13 @@ describe.skipIf(!INTEGRATION || !HAS_SECRETS)("WalletAgent ingestion (live)", ()
 			await agent.initialize(VITALIK);
 			const refresh = await agent.refresh();
 			const recent = await agent.getRecentActivity(50);
-			return { refresh, recent };
+			const dossier = await agent.getDossier();
+			return { refresh, recent, dossier };
 		});
 
 		expect(result.refresh.ok).toBe(true);
 		expect(result.refresh.ingested).toBeGreaterThanOrEqual(10);
+		expect(result.refresh.dossierVersion).toBeGreaterThanOrEqual(1);
 		expect(result.recent.length).toBeGreaterThanOrEqual(10);
 
 		const first = result.recent[0];
@@ -46,5 +48,12 @@ describe.skipIf(!INTEGRATION || !HAS_SECRETS)("WalletAgent ingestion (live)", ()
 		const parsed = JSON.parse(sample!.classification!);
 		expect(typeof parsed.category).toBe("string");
 		expect(typeof parsed.notes).toBe("string");
-	}, 120_000);
+
+		expect(result.dossier.address).toBe(VITALIK);
+		expect(result.dossier.version).toBeGreaterThanOrEqual(1);
+		expect(result.dossier.strategyTags.length).toBeGreaterThanOrEqual(1);
+		expect(result.dossier.narrative.length).toBeGreaterThan(50);
+		expect(result.dossier.generatedAt).toBeGreaterThan(0);
+		expect(result.dossier.topCounterparties.length).toBeGreaterThan(0);
+	}, 180_000);
 });

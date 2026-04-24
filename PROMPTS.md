@@ -132,6 +132,60 @@ None this milestone — M4 executed directly from `plan.md` after a single "go".
 
 ---
 
+## M5 — Dossier summarization
+
+### Meta-prompts
+
+None this milestone — M5 executed directly from `plan.md` after a single "go". Trivial approval messages are not logged per the protocol.
+
+### Application prompts
+
+- **Dossier summarization system prompt (M5).** Used by `summarizeDossier` in `src/ingest/summarizeDossier.ts` after classify. Called once per refresh against `@cf/meta/llama-3.3-70b-instruct-fp8-fast` via the Cloudflare Workers AI REST endpoint; retried once on parse failure with an explicit "return only raw JSON" reminder appended to the user turn.
+
+  ```
+  You are writing a wallet dossier for a DeFi research tool. Given transaction aggregations and a sample of recent activity for an Ethereum mainnet wallet, produce three fields:
+
+  - strategyTags: an array of 1-6 short tags (each 2-4 words) describing the wallet's DeFi profile. Examples: "DEX power user", "LST accumulator", "NFT minter", "bridge user", "lending borrower", "governance participant", "MEV searcher", "airdrop farmer", "stablecoin holder". Choose tags that are actually supported by the data.
+  - narrative: a 3-5 sentence plain-English summary of what this wallet does on-chain. Cite specific protocols, categories, and counts from the provided aggregations. Do not invent numbers.
+  - riskFlags: an array of flag objects, each with "severity" ("info" | "warn" | "high") and "message" (one sentence, max 20 words). Use "info" for neutral observations, "warn" for unusual patterns (e.g. many failed-looking method IDs, high concentration to one counterparty), "high" for clear red flags (known scam contracts, draining patterns). Return [] when nothing stands out.
+
+  Rules:
+  - Base everything on the provided data. Do not invent tx counts, protocol names, or counterparty addresses.
+  - If the data is thin (few txs, few classifications), say so in the narrative and keep strategyTags short.
+  - Return ONLY a single JSON object with exactly these three keys (strategyTags, narrative, riskFlags). No prose, no code fences, no markdown.
+  ```
+
+- **Dossier summarization user-turn template (M5).** Rendered once per refresh with aggregations + a sample of up to 20 recent classified txs:
+
+  ```
+  Wallet: {selfAddress}
+  Total transactions ingested: {totalTxs}
+  Successfully classified: {classifiedTxs}
+  Date range: {firstSeen YYYY-MM-DD} to {lastSeen YYYY-MM-DD}
+
+  Category counts:
+  {JSON.stringify(categoryCounts, null, 2)}
+
+  Top protocols (from classified txs, up to 5):
+  {JSON.stringify(topProtocols, null, 2)}
+
+  Top counterparties (up to 5):
+  {JSON.stringify(topCounterparties, null, 2)}
+
+  Recent classified transactions (sample, up to 20):
+  {JSON.stringify(samples, null, 2)}
+
+  Return ONLY the JSON object { strategyTags, narrative, riskFlags }.
+  ```
+
+  On retry (attempt 2), the following reminder is appended to the user turn:
+
+  ```
+  Return ONLY raw JSON for the object { strategyTags, narrative, riskFlags } — no code fences, no commentary.
+  ```
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 
