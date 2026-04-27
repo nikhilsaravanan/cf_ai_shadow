@@ -287,6 +287,34 @@ Scope/features come from `PRD.md` (authoritative). Build rails and conventions c
 
 ---
 
+## M9.2 — Incremental ingest (post-M9 cost fix)
+
+**Goal:** Stop re-fetching and re-classifying the same 200 txs per `IngestWorkflow` run. Today every `scheduledRefresh` re-classifies a wallet's full history, which on a `*/10 * * * *` cron across N watched wallets blows past the 10k-neuron daily free quota in ~30 minutes of dev-server uptime even when zero on-chain activity has happened. Move to incremental Alchemy fetch keyed off `state.lastSyncedBlock`, reuse cached classifications, and skip the summarize LLM call entirely when no new txs landed.
+
+**Pre-conditions:** M9 green. Branch `main`.
+
+**Why outside the original plan:** The 8B model swap in `M9: ingest robustness` (commit `641866d`) reduced per-call cost but didn't address the structural redundancy — every refresh still re-classifies all 200 txs. Diagnosed during post-M9 redesign work; fix is one structural pass.
+
+**Steps:**
+1. **Incremental fetch.** `fetchWalletTxs(apiKey, address, fromBlock?: number)` — pass `fromBlock` to both `alchemy_getAssetTransfers` calls (encoded as hex). Default `fromBlock = 0` (initial fetch). Returns only transfers whose `blockNum > fromBlock`.
+2. **Workflow plumbing.** Extend `IngestParams` to `{ address, fromBlock? }`. In `WalletAgent.refresh()` pass `fromBlock: this.state.lastSyncedBlock` when creating the workflow instance. The workflow forwards it to `fetchWalletTxs`.
+3. **Classification reuse.** Add `@callable getCachedClassifications(hashes: string[])` on `WalletAgent` returning a `Map<hash, Classification>` from the SQLite `transactions` table for any rows whose `classification` column is non-null. Workflow calls it after decode; only txs without a cached classification get sent to `classifyTxs`. (Defensive against re-orgs / off-by-one in `lastSyncedBlock`.)
+4. **Skip summarize on no-op.** If after classify the count of *newly classified* txs is 0, skip the `summarize` step entirely. Pass `summary: null` to `applyDossier`. The dossier's `topProtocols`/`topCounterparties` still get refreshed (cheap, computed from SQL, no LLM call) but `strategyTags`/`narrative`/`riskFlags`/`version` stay unchanged.
+5. **Aggregations from SQL.** `applyDossier` reads ALL classified txs from its `transactions` table (not just the new batch passed in) and runs `aggregateClassified` against that. The workflow stops computing aggregations itself — just inserts new txs and asks the WalletAgent to recompute. This is forced by step 1: once we stop fetching the full 200-tx window, the workflow's in-memory view is partial.
+6. **Dev gate on scheduledRefresh.** Add `SHADOW_DEV` env var (string, default `"0"`). In `WalletAgent.scheduledRefresh()`, if `this.env.SHADOW_DEV === "1"` log and return before doing any work. Document in `.dev.vars.example`. Belt-and-suspenders so local `wrangler dev` doesn't silently chew the daily quota.
+7. **Verification.**
+   - Manual: `npm run dev`, watch a wallet refresh once (uses neurons), then refresh again on the same wallet — second refresh should print `[classify] 0 new txs to classify, skipping LLM` (or equivalent) and complete with 0 AI calls.
+   - Existing `vitest` integration test (`walletAgent.integration.spec.ts`) should still pass: first refresh ingests + classifies + bumps `dossier.version` to 1.
+   - `/shadow-check` green.
+8. Append M9.2 block to `PROMPTS.md` (verbatim diagnosis prompts).
+9. `git add -A && git commit -m "M9: incremental ingest — fetch from lastSyncedBlock, reuse cached classifications, skip summarize when no new txs"`.
+
+**Verification:** `/shadow-check` green; manual idle-refresh test shows 0 AI calls.
+
+**Out of scope (deferred):** Re-classifying *previously misclassified* txs (would require a "force-reclassify" path); back-filling beyond the 200-tx Alchemy cap; per-wallet override of the schedule cron.
+
+---
+
 ## M10 — Polish + first real deploy
 
 **Goal:** Favicon, loading states, error toasts. First real `wrangler deploy`. Scheduled refresh verified on production.
