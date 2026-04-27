@@ -1,7 +1,8 @@
 import type { AiCreds } from "./classifyTxs";
 import type { Classification, RiskFlag } from "../walletAgent";
 
-const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+// Same neuron-cost reasoning as classify (see classifyTxs.ts comment).
+const MODEL = "@cf/meta/llama-3.1-8b-instruct";
 const MAX_TOKENS = 1500;
 
 export type ClassifiedTx = {

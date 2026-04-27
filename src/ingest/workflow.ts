@@ -92,6 +92,10 @@ export class IngestWorkflow extends WorkflowEntrypoint<Env, IngestParams> {
 		await step.do("persist", async () => {
 			const id = this.env.WalletAgent.idFromName(address);
 			const stub = this.env.WalletAgent.get(id);
+			// Workaround for partyserver name-not-set on direct DO-to-DO RPC
+			// (https://github.com/cloudflare/workerd/issues/2240). Without this,
+			// applyDossier's setState throws when it tries to read .name during emit.
+			await stub.setName(address);
 			const payload: PersistPayload = {
 				address,
 				txs: classified,

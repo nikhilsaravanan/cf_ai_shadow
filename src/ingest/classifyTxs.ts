@@ -1,6 +1,10 @@
 import type { Classification } from "../walletAgent";
 
-const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+// Switched from llama-3.3-70b-instruct-fp8-fast to llama-3.1-8b-instruct per
+// plan §0a M4 fallback: 70B exhausts the free 10k-neuron daily quota in a
+// single 200-tx refresh. 8B is ~10× cheaper and adequate for structured
+// classification. Chat (ResearcherAgent) keeps 70B for tool-calling quality.
+const MODEL = "@cf/meta/llama-3.1-8b-instruct";
 const BATCH_SIZE = 10;
 const MAX_TOKENS = 2000;
 
@@ -163,21 +167,44 @@ async function callLlama(
 	return json.result?.response ?? "";
 }
 
+const CONCURRENCY = 4;
+
 async function classifyBatch(
 	creds: AiCreds,
 	selfAddress: string,
 	batch: TxToClassify[],
+	batchIndex: number,
+	state: { quotaExhausted: boolean },
 ): Promise<(Classification | null)[]> {
+	if (state.quotaExhausted) {
+		return new Array<Classification | null>(batch.length).fill(null);
+	}
 	const userPrompt = buildUserPrompt(selfAddress, batch);
 	for (let attempt = 0; attempt < 2; attempt++) {
 		try {
 			const raw = await callLlama(creds, userPrompt, attempt > 0);
+			if (batchIndex === 0 && attempt === 0) {
+				console.log(`[classify] batch 0 raw (truncated 600):`, raw.slice(0, 600));
+			}
 			const jsonText = extractJsonArray(raw);
 			const parsed = JSON.parse(jsonText);
 			const normalized = normalize(parsed, batch.length);
 			if (normalized) return normalized;
-		} catch {
-			// fall through to retry or null fallback
+			console.warn(
+				`[classify] batch ${batchIndex} attempt ${attempt}: normalize returned null (parsed type=${Array.isArray(parsed) ? `array len=${parsed.length}` : typeof parsed})`,
+			);
+		} catch (e) {
+			const msg = String(e instanceof Error ? e.message : e);
+			console.warn(
+				`[classify] batch ${batchIndex} attempt ${attempt} threw: ${msg.slice(0, 200)}`,
+			);
+			if (msg.includes("429") || msg.includes("daily free allocation")) {
+				state.quotaExhausted = true;
+				console.error(
+					`[classify] Workers AI daily quota exhausted — short-circuiting remaining batches`,
+				);
+				break;
+			}
 		}
 	}
 	return new Array<Classification | null>(batch.length).fill(null);
@@ -188,11 +215,28 @@ export async function classifyTxs(
 	selfAddress: string,
 	txs: TxToClassify[],
 ): Promise<(Classification | null)[]> {
-	const out: (Classification | null)[] = [];
+	const batches: TxToClassify[][] = [];
 	for (let i = 0; i < txs.length; i += BATCH_SIZE) {
-		const batch = txs.slice(i, i + BATCH_SIZE);
-		const results = await classifyBatch(creds, selfAddress, batch);
-		out.push(...results);
+		batches.push(txs.slice(i, i + BATCH_SIZE));
 	}
-	return out;
+	const state = { quotaExhausted: false };
+	const results: (Classification | null)[][] = new Array(batches.length);
+	for (let i = 0; i < batches.length; i += CONCURRENCY) {
+		const group = batches.slice(i, i + CONCURRENCY);
+		const groupResults = await Promise.all(
+			group.map((batch, j) =>
+				classifyBatch(creds, selfAddress, batch, i + j, state),
+			),
+		);
+		for (let k = 0; k < groupResults.length; k++) {
+			results[i + k] = groupResults[k];
+		}
+		if (state.quotaExhausted) {
+			for (let k = i + group.length; k < batches.length; k++) {
+				results[k] = new Array<Classification | null>(batches[k].length).fill(null);
+			}
+			break;
+		}
+	}
+	return results.flat();
 }
