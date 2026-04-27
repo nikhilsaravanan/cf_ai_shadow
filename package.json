@@ -9,11 +9,13 @@
     "preview": "vite preview",
     "start": "vite",
     "test": "vitest",
+    "test:e2e": "playwright test --config=test/e2e/playwright.config.ts",
     "cf-typegen": "wrangler types"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.33.2",
     "@cloudflare/vitest-pool-workers": "^0.12.4",
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/vite": "^4.2.4",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
