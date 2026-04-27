@@ -70,30 +70,35 @@ async function rpcBatch<T>(
 	return out;
 }
 
-export async function fetchWalletTxs(apiKey: string, address: string): Promise<RawTx[]> {
+export async function fetchWalletTxs(
+	apiKey: string,
+	address: string,
+	fromBlock = 0,
+): Promise<RawTx[]> {
 	const url = ALCHEMY_URL(apiKey);
 	const addr = address.toLowerCase();
 
+	// fromBlock=0 → initial sync, return MOST RECENT 200 (order=desc).
+	// fromBlock>0 → incremental, catch up OLDEST UNSYNCED first (order=asc) so a hot
+	// wallet with >200 unsynced txs walks forward across multiple refreshes instead
+	// of skipping the gap.
+	const baseParams: Record<string, unknown> = {
+		category: CATEGORIES,
+		withMetadata: true,
+		excludeZeroValue: false,
+		maxCount: MAX_COUNT_HEX,
+		order: fromBlock > 0 ? "asc" : "desc",
+	};
+	if (fromBlock > 0) {
+		baseParams.fromBlock = "0x" + fromBlock.toString(16);
+	}
+
 	const [out, inn] = await Promise.all([
 		rpc<{ transfers: AlchemyTransfer[] }>(url, "alchemy_getAssetTransfers", [
-			{
-				fromAddress: addr,
-				category: CATEGORIES,
-				withMetadata: true,
-				excludeZeroValue: false,
-				maxCount: MAX_COUNT_HEX,
-				order: "desc",
-			},
+			{ fromAddress: addr, ...baseParams },
 		]),
 		rpc<{ transfers: AlchemyTransfer[] }>(url, "alchemy_getAssetTransfers", [
-			{
-				toAddress: addr,
-				category: CATEGORIES,
-				withMetadata: true,
-				excludeZeroValue: false,
-				maxCount: MAX_COUNT_HEX,
-				order: "desc",
-			},
+			{ toAddress: addr, ...baseParams },
 		]),
 	]);
 

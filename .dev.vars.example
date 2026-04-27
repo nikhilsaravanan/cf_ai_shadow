@@ -9,3 +9,9 @@ WORKERS_AI_API_TOKEN=your_workers_ai_api_token_here
 # Set INTEGRATION=1 (and replace the placeholder keys above with real ones)
 # to enable live integration tests against Alchemy + Etherscan + Workers AI.
 # INTEGRATION=1
+
+# Local-dev gate. When SHADOW_DEV=1, WalletAgent.scheduledRefresh returns
+# immediately instead of triggering an IngestWorkflow. Prevents `wrangler dev`
+# from silently chewing the daily Workers AI free quota on the */10 cron.
+# Keep "0" (or omit) in production.
+SHADOW_DEV=1

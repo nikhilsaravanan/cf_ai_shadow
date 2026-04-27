@@ -1,5 +1,12 @@
 import { Agent, callable } from "agents";
-import type { PersistPayload } from "./ingest/workflow";
+import {
+	aggregateClassified,
+	sampleForSummary,
+	type ClassifiedTx,
+	type Aggregations,
+	type SampleTx,
+	type SummaryOutput,
+} from "./ingest/summarizeDossier";
 
 export type Classification = {
 	category:
@@ -125,6 +132,12 @@ export class WalletAgent extends Agent<Env, WalletState> {
 	async scheduledRefresh(): Promise<void> {
 		const address = this.state.address;
 		if (!address) return;
+		if ((this.env.SHADOW_DEV as string) === "1") {
+			console.log(
+				`[WalletAgent:${address}] scheduledRefresh skipped — SHADOW_DEV=1 (local dev gate)`,
+			);
+			return;
+		}
 		const sinceLast = Date.now() - this.state.updatedAt;
 		if (sinceLast < SCHEDULED_REFRESH_DEBOUNCE_MS) {
 			console.log(
@@ -153,7 +166,9 @@ export class WalletAgent extends Agent<Env, WalletState> {
 		const address = this.state.address;
 		if (!address) throw new Error("WalletAgent not initialized: call initialize(address) first");
 
-		const instance = await this.env.IngestWorkflow.create({ params: { address } });
+		const instance = await this.env.IngestWorkflow.create({
+			params: { address, fromBlock: this.state.lastSyncedBlock },
+		});
 		const deadline = Date.now() + WORKFLOW_TIMEOUT_MS;
 		while (true) {
 			const status = await instance.status();
@@ -175,15 +190,34 @@ export class WalletAgent extends Agent<Env, WalletState> {
 		};
 	}
 
-	async applyDossier(payload: PersistPayload): Promise<void> {
-		const address = payload.address;
-		if (address !== this.state.address) {
-			throw new Error(
-				`applyDossier address mismatch: payload ${address} vs state ${this.state.address}`,
-			);
+	async getCachedClassifications(
+		hashes: string[],
+	): Promise<Record<string, Classification>> {
+		const out: Record<string, Classification> = {};
+		for (const hash of hashes) {
+			const [row] = this.sql<{ classification: string | null }>`
+				SELECT classification FROM transactions WHERE hash = ${hash}
+			`;
+			if (!row?.classification) continue;
+			try {
+				out[hash] = JSON.parse(row.classification) as Classification;
+			} catch {
+				// drop malformed rows; classify will refill
+			}
+		}
+		return out;
+	}
+
+	async upsertAndAggregate(
+		txs: ClassifiedTx[],
+		highestBlock: number,
+	): Promise<{ aggregations: Aggregations; samples: SampleTx[] }> {
+		const address = this.state.address;
+		if (!address) {
+			throw new Error("WalletAgent not initialized");
 		}
 
-		for (const tx of payload.txs) {
+		for (const tx of txs) {
 			const clsJson = tx.classification ? JSON.stringify(tx.classification) : null;
 			this.sql`
 				INSERT OR REPLACE INTO transactions
@@ -198,36 +232,66 @@ export class WalletAgent extends Agent<Env, WalletState> {
 		this._recomputeCounterparties(address);
 
 		const [{ c: txCount }] = this.sql<{ c: number }>`SELECT COUNT(*) AS c FROM transactions`;
+		const allClassified = this._readAllClassifiedTxs();
+		const aggregations = aggregateClassified(address, allClassified);
+		const samples = sampleForSummary(address, allClassified, 20);
 
-		const summary = payload.summary;
-		const nextDossier: Dossier = summary
-			? {
-					version: this.state.dossier.version + 1,
-					address,
-					strategyTags: summary.strategyTags,
-					narrative: summary.narrative,
-					riskFlags: summary.riskFlags,
-					topProtocols: payload.aggregations.topProtocols,
-					topCounterparties: payload.aggregations.topCounterparties,
-					generatedAt: Date.now(),
-				}
-			: {
-					...this.state.dossier,
-					address,
-					topProtocols: payload.aggregations.topProtocols,
-					topCounterparties: payload.aggregations.topCounterparties,
-					generatedAt: Date.now(),
-				};
-
-		const highestBlock = Math.max(this.state.lastSyncedBlock, payload.highestBlock);
-
+		const newHighest = Math.max(this.state.lastSyncedBlock, highestBlock);
 		this.setState({
 			...this.state,
-			lastSyncedBlock: highestBlock,
+			lastSyncedBlock: newHighest,
 			txCount,
 			updatedAt: Date.now(),
-			dossier: nextDossier,
+			dossier: {
+				...this.state.dossier,
+				address,
+				topProtocols: aggregations.topProtocols,
+				topCounterparties: aggregations.topCounterparties,
+				generatedAt: Date.now(),
+			},
 		});
+
+		return { aggregations, samples };
+	}
+
+	async applySummary(summary: SummaryOutput): Promise<void> {
+		const address = this.state.address;
+		if (!address) throw new Error("WalletAgent not initialized");
+		this.setState({
+			...this.state,
+			updatedAt: Date.now(),
+			dossier: {
+				...this.state.dossier,
+				version: this.state.dossier.version + 1,
+				address,
+				strategyTags: summary.strategyTags,
+				narrative: summary.narrative,
+				riskFlags: summary.riskFlags,
+				generatedAt: Date.now(),
+			},
+		});
+	}
+
+	private _readAllClassifiedTxs(): ClassifiedTx[] {
+		const rows = this.sql<TransactionRow>`
+			SELECT hash, block_number, timestamp, from_address, to_address,
+			       value_wei, method_id, decoded_input, classification
+			FROM transactions
+			ORDER BY block_number DESC
+		`;
+		return [...rows].map((r) => ({
+			hash: r.hash,
+			blockNumber: r.block_number,
+			timestamp: r.timestamp,
+			from: r.from_address,
+			to: r.to_address,
+			valueWei: r.value_wei,
+			methodId: r.method_id,
+			decodedInput: r.decoded_input,
+			classification: r.classification
+				? (JSON.parse(r.classification) as Classification)
+				: null,
+		}));
 	}
 
 	private _recomputeCounterparties(selfAddress: string) {

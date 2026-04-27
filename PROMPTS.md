@@ -293,6 +293,34 @@ None this milestone — pure UI/styling pass; no new LLM calls or prompt changes
 
 ---
 
+## M9.2 — Incremental ingest (cost fix)
+
+### Meta-prompts
+
+- Diagnosis question that triggered the cost-fix work:
+
+  > the quota is back but do you think we are doing something to expend the usage limits instantly every time? heres the terminal log: [WalletAgent:0x28c…] scheduledRefresh firing … [classify] batch N attempt 0 threw: Workers AI 429: …
+
+  - Produced: a math-grounded diagnosis identifying three causes — (1) `fetchWalletTxs` re-fetches the latest 200 txs every refresh with no `fromBlock`; (2) `classifyTxs` re-classifies all of them every cycle; (3) the `*/10` cron across N watched wallets can burn ~378 AI calls/hr against a 10k-neuron daily budget. Drove the M9.2 plan amendment.
+
+- Pushback that corrected the watchlist-trim suggestion in favor of caching:
+
+  > for 4, why would we delete other wallets, cant we just cache the data to avoid rerunning the calls?
+
+  - Produced: refined recommendation — replace "trim watchlist" with (a) classification reuse from SQLite by hash, (b) skip-summarize on no-op refreshes, (c) move aggregation into the WalletAgent so it always reflects the full SQL history rather than just the in-flight workflow batch.
+
+- Approval to ship:
+
+  > yes
+
+  - Produced: `plan.md` amendment (commit `e42d55d`) + the implementation in this commit.
+
+### Application prompts
+
+None this milestone — pure ingest-pipeline restructuring; no new prompts. The classify and summarize prompts from M4 / M5 are reused unchanged.
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 
