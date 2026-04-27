@@ -270,6 +270,29 @@ None this milestone — M9 is UI-only (React panels wired to `useAgent` + `useAg
 
 ---
 
+## M9.1 — SPA redesign (Figma-derived design language)
+
+### Meta-prompts
+
+- Redesign request — drove the full restyle of `App.tsx`, `Watchlist`, `Dossier`, `Chat`, plus brand tokens in `index.css` and Manrope/JetBrains Mono in `index.html`. The Figma file was fetched via the Figma MCP (`get_screenshot` on node `0:1`).
+
+  > i want to redesign our frontend spa completely, using https://www.figma.com/design/HImdZuYV3DEp8RiGzgdjkH/CRYPTO-DASHBOARD--Community-?node-id=0-1&m=dev&t=Z5CuVCVDLqNShsh8-1. use the figma mcp to get the dashboard design and model ours after the elements in that. it doesnt have to be exact, but i want a similar design language
+
+  - Produced: brand-yellow `#f4d442` accent, near-black canvas, rounded-2xl elevated cards; new component layout — yellow Moon logo in header, sidebar Watchlist with avatar circles, Dossier hero card + 4-stat row + yellow Strategy callout + Narrative card + protocols/counterparties grid + risk-flag rows, Chat with yellow user bubbles and circular ArrowUp Send.
+  - Manual edits: scoped Playwright selectors to `data-testid="dossier-narrative"`, `li[data-role="assistant"]`, and the brand-yellow Strategy card's list items so the e2e suite still passes against the new DOM.
+
+- Follow-up confirming the proposed plan and the two questions about font + icon dep:
+
+  > go, and 3 and 4 are ok
+
+  - Produced: confirmation to (3) load Manrope via Google Fonts in `index.html`, and (4) add `lucide-react` (^1.11.0) for sidebar / header / chat icons.
+
+### Application prompts
+
+None this milestone — pure UI/styling pass; no new LLM calls or prompt changes.
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 

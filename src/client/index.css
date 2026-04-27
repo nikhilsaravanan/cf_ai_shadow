@@ -1,1 +1,21 @@
 @import "tailwindcss";
+
+@theme {
+	--color-canvas: #0a0a0c;
+	--color-surface: #15161a;
+	--color-surface-2: #1c1d22;
+	--color-edge: #25262c;
+	--color-brand: #f4d442;
+	--color-brand-hover: #e8c547;
+	--color-up: #4ade80;
+	--color-down: #ff5757;
+
+	--font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system, sans-serif;
+	--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html,
+body {
+	font-family: var(--font-sans);
+	font-feature-settings: "cv11", "ss01";
+}
