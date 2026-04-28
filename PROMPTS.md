@@ -321,6 +321,28 @@ None this milestone — pure ingest-pipeline restructuring; no new prompts. The 
 
 ---
 
+## M9.3 — Pin lastSyncedBlock + smaller incremental cap
+
+### Meta-prompts
+
+- Live observation that surfaced the M9.2 bug:
+
+  > [terminal log of multiple scheduledRefresh cycles showing `[classify] N new txs, 0 reused from cache` for varying N, all hitting 429 and short-circuiting] heres the terminal message. if you use playwright cli to navigate to the localhost you will see that the number of transactions ingested keeps increasing after each run. is this a cause of the problem?
+
+  - Produced: diagnosis that `lastSyncedBlock` was advancing past unclassified txs even when all classifications failed, leaving permanent null-classification rows when the LLM was 429ing. Identified the secondary risk that a hot wallet's 200-tx catch-up burst could blow the daily quota in one cycle on recovery.
+
+- Approval to ship both fixes:
+
+  > ship the fix and bundle the max reduction
+
+  - Produced: `plan.md` amendment (commit `fc603d0`) + the implementation in this commit.
+
+### Application prompts
+
+None this milestone — fix is to ingestion accounting / fetch-cap; no prompt changes.
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 

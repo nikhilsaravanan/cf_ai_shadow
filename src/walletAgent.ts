@@ -211,6 +211,7 @@ export class WalletAgent extends Agent<Env, WalletState> {
 	async upsertAndAggregate(
 		txs: ClassifiedTx[],
 		highestBlock: number,
+		allClassified = true,
 	): Promise<{ aggregations: Aggregations; samples: SampleTx[] }> {
 		const address = this.state.address;
 		if (!address) {
@@ -232,14 +233,20 @@ export class WalletAgent extends Agent<Env, WalletState> {
 		this._recomputeCounterparties(address);
 
 		const [{ c: txCount }] = this.sql<{ c: number }>`SELECT COUNT(*) AS c FROM transactions`;
-		const allClassified = this._readAllClassifiedTxs();
-		const aggregations = aggregateClassified(address, allClassified);
-		const samples = sampleForSummary(address, allClassified, 20);
+		const allClassifiedTxs = this._readAllClassifiedTxs();
+		const aggregations = aggregateClassified(address, allClassifiedTxs);
+		const samples = sampleForSummary(address, allClassifiedTxs, 20);
 
-		const newHighest = Math.max(this.state.lastSyncedBlock, highestBlock);
+		// Only advance lastSyncedBlock when every tx in this batch was classified.
+		// If any failed (LLM 429 / null result), keep the prior value so the next
+		// refresh re-fetches the same window and retries — otherwise null rows
+		// would orphan in SQL once the window scrolls past them.
+		const nextLastSynced = allClassified
+			? Math.max(this.state.lastSyncedBlock, highestBlock)
+			: this.state.lastSyncedBlock;
 		this.setState({
 			...this.state,
-			lastSyncedBlock: newHighest,
+			lastSyncedBlock: nextLastSynced,
 			txCount,
 			updatedAt: Date.now(),
 			dossier: {

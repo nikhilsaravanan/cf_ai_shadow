@@ -1,6 +1,8 @@
 const ALCHEMY_URL = (key: string) => `https://eth-mainnet.g.alchemy.com/v2/${key}`;
 const MAX_TXS = 200;
-const MAX_COUNT_HEX = "0x" + MAX_TXS.toString(16);
+// Incremental refreshes cap fetched txs lower so a hot wallet's catch-up burst
+// after a quota outage doesn't try to classify 200 txs in one cycle.
+const MAX_TXS_INCREMENTAL = 50;
 const CATEGORIES = ["external", "erc20", "erc721", "erc1155", "internal"];
 
 type AlchemyTransfer = {
@@ -80,13 +82,16 @@ export async function fetchWalletTxs(
 
 	// fromBlock=0 → initial sync, return MOST RECENT 200 (order=desc).
 	// fromBlock>0 → incremental, catch up OLDEST UNSYNCED first (order=asc) so a hot
-	// wallet with >200 unsynced txs walks forward across multiple refreshes instead
-	// of skipping the gap.
+	// wallet with >cap unsynced txs walks forward across multiple refreshes instead
+	// of skipping the gap. Cap is lower for incremental to keep per-cycle classify
+	// burst bounded.
+	const cap = fromBlock > 0 ? MAX_TXS_INCREMENTAL : MAX_TXS;
+	const capHex = "0x" + cap.toString(16);
 	const baseParams: Record<string, unknown> = {
 		category: CATEGORIES,
 		withMetadata: true,
 		excludeZeroValue: false,
-		maxCount: MAX_COUNT_HEX,
+		maxCount: capHex,
 		order: fromBlock > 0 ? "asc" : "desc",
 	};
 	if (fromBlock > 0) {
@@ -108,8 +113,12 @@ export async function fetchWalletTxs(
 	}
 
 	const transfers = Array.from(byHash.values())
-		.sort((a, b) => parseInt(b.blockNum, 16) - parseInt(a.blockNum, 16))
-		.slice(0, MAX_TXS);
+		.sort((a, b) =>
+			fromBlock > 0
+				? parseInt(a.blockNum, 16) - parseInt(b.blockNum, 16)
+				: parseInt(b.blockNum, 16) - parseInt(a.blockNum, 16),
+		)
+		.slice(0, cap);
 
 	if (transfers.length === 0) return [];
 

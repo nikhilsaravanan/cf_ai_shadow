@@ -129,6 +129,18 @@ export class IngestWorkflow extends WorkflowEntrypoint<Env, IngestParams> {
 			(m, t) => (t.blockNumber > m ? t.blockNumber : m),
 			0,
 		);
+		// allClassified gates whether lastSyncedBlock advances. When AI fails for
+		// any tx in the batch, we keep lastSyncedBlock pinned so the next refresh
+		// re-fetches the same window and retries — otherwise unclassified rows
+		// would orphan in SQL forever once the window scrolls past them.
+		const cachedCount = Object.keys(cached).length;
+		const allClassified =
+			cachedCount + newlyClassified === classified.length;
+		if (!allClassified) {
+			console.log(
+				`[ingest:${address}] partial classification (${cachedCount} cached + ${newlyClassified} new vs ${classified.length} fetched) — pinning lastSyncedBlock for retry`,
+			);
+		}
 
 		type AggResult = {
 			aggregations: import("./summarizeDossier").Aggregations;
@@ -140,7 +152,11 @@ export class IngestWorkflow extends WorkflowEntrypoint<Env, IngestParams> {
 				const id = this.env.WalletAgent.idFromName(address);
 				const stub = this.env.WalletAgent.get(id);
 				await stub.setName(address);
-				const result = await stub.upsertAndAggregate(classified, highestBlock);
+				const result = await stub.upsertAndAggregate(
+					classified,
+					highestBlock,
+					allClassified,
+				);
 				return JSON.parse(JSON.stringify(result));
 			},
 		)) as AggResult;
