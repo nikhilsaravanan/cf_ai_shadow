@@ -191,14 +191,6 @@ function StatRow({
 			color: riskCount > 0 ? "#ef4444" : "#a78bfa",
 		},
 	];
-	// Vary the bleed origin per card so the four cards look distinct (matches
-	// Figma's "different glow per card" treatment instead of all-same).
-	const bleedOrigins = [
-		"30% 80%",
-		"75% 30%",
-		"20% 30%",
-		"80% 75%",
-	];
 	return (
 		<div className="grid grid-cols-4 gap-3">
 			{cards.map((c, i) => (
@@ -206,11 +198,21 @@ function StatRow({
 					key={c.label}
 					className="relative overflow-hidden rounded-2xl border border-white/15 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.55)]"
 				>
-					{/* bleed — saturated colored "lit-from-behind" wash */}
+					{/* glass reflecting the sparkline below — light rises from the
+					    bottom of the card where the sparkline sits and fades up,
+					    making the chart itself look like the light source */}
 					<div
 						className="absolute inset-0"
 						style={{
-							background: `radial-gradient(circle at ${bleedOrigins[i % 4]}, ${c.color}cc 0%, ${c.color}66 25%, ${c.color}22 50%, transparent 80%), linear-gradient(135deg, ${c.color}1a, transparent 70%)`,
+							background: `linear-gradient(to top, ${c.color}b3 0%, ${c.color}55 22%, ${c.color}22 45%, transparent 75%)`,
+						}}
+					/>
+					{/* widened glow at the very bottom edge — anchors the light
+					    source visually right where the sparkline path lives */}
+					<div
+						className="absolute inset-x-0 bottom-0 h-20"
+						style={{
+							background: `radial-gradient(120% 100% at 50% 100%, ${c.color}99 0%, transparent 70%)`,
 						}}
 					/>
 					{/* frosted overlay — soft, lets the bleed read through */}

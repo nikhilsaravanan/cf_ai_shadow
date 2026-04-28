@@ -102,7 +102,7 @@ export function Watchlist({
 	return (
 		<aside className="flex h-full min-h-0 flex-col border-r border-edge bg-white/[0.04] backdrop-blur-xl">
 			<div className="flex items-center gap-2.5 border-b border-edge px-5 py-4">
-				<span className="grid h-9 w-9 place-items-center rounded-xl border border-white/20 bg-white/10 text-brand-strong backdrop-blur-md">
+				<span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-brand-2 text-white shadow-sm">
 					<svg
 						viewBox="0 0 24 24"
 						className="h-5 w-5"
@@ -150,7 +150,7 @@ export function Watchlist({
 										key={entry.address}
 										className={`group flex items-center gap-2 rounded-xl px-1.5 py-1 transition ${
 											isActive
-												? "bg-white/[0.07] ring-1 ring-white/15"
+												? "bg-gradient-to-r from-brand/15 via-brand-soft to-brand-2/15 ring-1 ring-brand/30"
 												: "hover:bg-white/[0.04]"
 										}`}
 									>
@@ -215,7 +215,7 @@ export function Watchlist({
 								<button
 									type="submit"
 									disabled={pending}
-									className="flex-1 rounded-lg border border-brand/40 bg-brand/20 px-2 py-1.5 text-[11px] font-semibold text-brand-strong backdrop-blur-md transition hover:bg-brand/30 disabled:opacity-50"
+									className="flex-1 rounded-lg bg-gradient-to-r from-brand to-brand-2 px-2 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:brightness-105 disabled:opacity-50"
 								>
 									{pending ? "…" : "Add"}
 								</button>
@@ -311,7 +311,7 @@ function NavItem({
 			type="button"
 			className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
 				active
-					? "bg-white/[0.07] text-brand-strong ring-1 ring-white/15"
+					? "bg-gradient-to-r from-brand/15 via-brand-soft to-brand-2/15 text-brand-strong ring-1 ring-brand/25"
 					: "text-mute hover:bg-white/[0.04] hover:text-ink"
 			}`}
 		>

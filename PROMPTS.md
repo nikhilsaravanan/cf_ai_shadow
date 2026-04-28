@@ -399,6 +399,12 @@ None this milestone — pure UI/structural pass; no new LLM calls or prompt chan
 
   - Produced: bleed gradient bumped from `linear+radial` to `radial-gradient(circle at varied origin, color-cc 0%, color-66 25%, color-22 50%, transparent 80%)` so each card's bleed covers more area and per-card origin varies (bottom-left / top-right / top-left / bottom-right) for visual rhythm. All `bg-gradient-to-r/br from-brand to-brand-2` brand gradients across App, Watchlist, Dossier, Chat (avatar, logomark, active sidebar items, Add submit, Refresh button, tab underlines, strategy tag pills, Send button, user-bubble fill, assistant-bubble accent stripe) replaced with glass chips: `border border-white/20 bg-white/10 backdrop-blur-md` for neutral, `border border-brand/30 bg-brand/15 backdrop-blur-md` for brand-tinted. Only the white-line top-edge highlight on stat cards retains a `gradient-to-r from-transparent via-white/30 to-transparent` (it's the glass shine, not a brand gradient).
 
+- Second correction (v3 iteration of M9.6) — sidebar buttons + chat looked too austere as glass chips, and the stat-card bleeds read as random "dot" spotlights rather than light reflecting off the chart inside the card:
+
+  > revert the buttons on the left sidebar back, and make the chats like that too. as for the dossier cards, dont use the dots as a "light source" make the glass reflect the light from the graphs
+
+  - Produced: brand gradients **restored** on Watchlist (logomark, active wallet rows, active nav rows, Add submit) and Chat (Send button, user-bubble fill, assistant-bubble accent stripe). Stat-card bleed redesigned to a vertical light-rises-from-the-chart pattern — `linear-gradient(to top, color-b3 0%, color-55 22%, color-22 45%, transparent 75%)` plus a wider bottom-edge `radial-gradient(120% 100% at 50% 100%, color-99, transparent 70%)` anchored where the sparkline sits, so the card's color appears emitted by the chart line below it. Sparkline reworked to a two-stroke "filament": a wide `${color}` halo at 70% opacity with a Gaussian-blur SVG filter (light-source halo) plus a thin bright-white 95% core stroke (the filament itself) on top of the area-fill. The card glass now visibly reflects the chart's light upward.
+
 ### Application prompts
 
 None this milestone — pure surface-treatment pass; no new LLM calls or prompt changes.

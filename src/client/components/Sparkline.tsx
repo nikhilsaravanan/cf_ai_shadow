@@ -69,16 +69,43 @@ export function Sparkline({
 		>
 			<defs>
 				<linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-					<stop offset="0%" stopColor={color} stopOpacity="0.35" />
+					<stop offset="0%" stopColor={color} stopOpacity="0.45" />
 					<stop offset="100%" stopColor={color} stopOpacity="0" />
 				</linearGradient>
+				<filter
+					id={`${gradientId}-glow`}
+					x="-30%"
+					y="-100%"
+					width="160%"
+					height="300%"
+				>
+					<feGaussianBlur stdDeviation="2.5" result="blur" />
+					<feMerge>
+						<feMergeNode in="blur" />
+						<feMergeNode in="SourceGraphic" />
+					</feMerge>
+				</filter>
 			</defs>
 			<path d={area} fill={`url(#${gradientId})`} />
+			{/* colored halo behind the bright line — gives the "light source" the
+			    same hue as the card bleed so it reads as one luminous element */}
 			<path
 				d={line}
 				fill="none"
 				stroke={color}
-				strokeWidth="1.6"
+				strokeOpacity="0.7"
+				strokeWidth="3.4"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				filter={`url(#${gradientId}-glow)`}
+			/>
+			{/* bright core stroke — the actual "filament" */}
+			<path
+				d={line}
+				fill="none"
+				stroke="#ffffff"
+				strokeOpacity="0.95"
+				strokeWidth="1.4"
 				strokeLinecap="round"
 				strokeLinejoin="round"
 			/>
