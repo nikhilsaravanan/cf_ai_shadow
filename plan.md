@@ -396,6 +396,31 @@ Scope/features come from `PRD.md` (authoritative). Build rails and conventions c
 
 ---
 
+## M9.6 — Glassmorphism pass
+
+**Goal:** Apply a glassmorphism aesthetic to the SPA, especially the Dossier cards. Two Figma references inform the look: a general glassmorphism mobile UI kit (color blobs + frosted-glass cards) and a glassmorphism dashboard (dark canvas + vivid gradient bleeds behind frosted cards). The dashboard reference is closer to Shadow's layout, so canvas flips to dark with color-blob ambient lighting.
+
+**Pre-conditions:** M9.5 shipped. Three-panel layout from M9.5 is preserved structurally; only surface styling changes.
+
+**Steps:**
+1. **Tokens.** `index.css` `@theme` flipped: canvas to a deep navy/black (`#0a0b14`), text to light scale (`#f9fafb` primary, white at varying opacities for muted), edge to `rgba(255,255,255,0.10)` for glass-card borders. Brand yellow + orange retained for accents and active states.
+2. **Background blob layer.** Fixed full-viewport behind everything in `App.tsx`: 3–4 large blurred radial gradients (yellow/orange/violet/teal) that show through the frosted cards. CSS-only — no decorative SVG, no images.
+3. **Card recipe.** Replace `bg-surface` (white) with `bg-white/[0.06]` + `backdrop-blur-xl` + `border-white/10` + soft drop shadow. A subtle white-to-transparent linear gradient on the card top edge for the "frosted glass top highlight" tell. Apply uniformly across stat cards, wallet hero, Latest Activities, Top Protocols, Chat, sidebar nav surface.
+4. **Stat-card gradient bleeds.** Each of the 4 stat cards gets a low-opacity color tint behind the glass (`absolute inset-0 -z-10` div with the brand-mapped color for that stat). Mirrors the dashboard reference's BTC orange / chart green / etc. card-tint pattern.
+5. **Sidebar.** Same frosted recipe; section eyebrows in `text-white/40`; active nav item keeps the yellow→orange gradient pill but on a glass surface.
+6. **Chat.** Assistant bubbles become frosted glass; user bubbles keep the yellow→orange gradient fill (still vivid). Streaming dot stays brand-yellow.
+7. **Sparkline tweaks.** Stroke stays vivid; area-fill gradient opacity bumped slightly so the sparkline reads on dark glass.
+8. **Iterate with Playwright.** Per the new `feedback_uiux_iterate_with_playwright.md` memory, screenshot between every meaningful step: tokens → blobs → first card → stat cards → wallet hero → activity table → right rail → chat. Compare each step against the glass references; do not declare done until structural and visual beats both match.
+9. **Verification.** `tsc --noEmit` clean, AI-independent e2e subset green (selectors are class-agnostic post-M9.5), `wrangler deploy --dry-run` clean. Final screenshot set saved.
+10. Append M9.6 block to `PROMPTS.md`.
+11. `git add -A && git commit -m "M9: glassmorphism — dark canvas with color blobs, frosted-glass cards across the SPA"`.
+
+**Verification:** AI-independent e2e green; before/after screenshots show actual glass treatment (frosted backdrop + visible color bleed through cards), not just dark mode.
+
+**Out of scope (deferred):** True 3D/SVG decorative blobs (per Reference A); per-card lottie/animated bleeds; light-theme glass variant.
+
+---
+
 ## M10 — Polish + first real deploy
 
 **Goal:** Favicon, loading states, error toasts. First real `wrangler deploy`. Scheduled refresh verified on production.
