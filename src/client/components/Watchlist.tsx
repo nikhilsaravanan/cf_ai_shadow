@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Wallet } from "lucide-react";
 import type { ResearcherAgent, ResearcherState } from "../../server";
 
 type AgentLike = {
@@ -9,9 +9,26 @@ type AgentLike = {
 	};
 };
 
-function avatarSeed(s: string): string {
-	const c = s.replace(/^0x/, "").charAt(0).toUpperCase();
-	return c || "?";
+const AVATAR_PALETTE = [
+	"bg-amber-100 text-amber-700",
+	"bg-orange-100 text-orange-700",
+	"bg-rose-100 text-rose-700",
+	"bg-violet-100 text-violet-700",
+	"bg-sky-100 text-sky-700",
+	"bg-emerald-100 text-emerald-700",
+	"bg-teal-100 text-teal-700",
+	"bg-fuchsia-100 text-fuchsia-700",
+];
+
+function avatarFor(seed: string): { className: string; letter: string } {
+	const cleaned = seed.replace(/^0x/i, "");
+	let hash = 0;
+	for (const ch of cleaned) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
+	const letter = (cleaned.charAt(0) || "?").toUpperCase();
+	return {
+		letter,
+		className: AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length],
+	};
 }
 
 export function Watchlist({
@@ -61,29 +78,37 @@ export function Watchlist({
 	};
 
 	return (
-		<aside className="flex h-full min-h-0 flex-col rounded-2xl border border-edge bg-surface">
-			<div className="flex items-center justify-between px-4 pt-4 pb-3">
-				<h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-					Watchlist
-				</h2>
-				<span className="text-[11px] text-zinc-500">
+		<aside className="flex h-full min-h-0 flex-col rounded-2xl border border-edge bg-surface shadow-[0_1px_2px_rgba(17,24,39,0.04)]">
+			<div className="flex items-center justify-between px-5 pt-5 pb-3">
+				<div>
+					<p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-mute-2">
+						Quick access
+					</p>
+					<h2 className="mt-1 flex items-center gap-2 text-sm font-bold text-ink">
+						<Wallet className="h-4 w-4 text-brand-2" strokeWidth={2.5} />
+						Watchlist
+					</h2>
+				</div>
+				<span className="rounded-full bg-canvas px-2 py-0.5 text-[11px] font-semibold text-mute">
 					{state.watchlist.length}
 				</span>
 			</div>
 			<ul className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2">
 				{state.watchlist.length === 0 ? (
-					<li className="px-3 py-3 text-xs text-zinc-500">
+					<li className="px-3 py-3 text-xs text-mute">
 						No wallets yet. Add one to start ingesting.
 					</li>
 				) : (
 					state.watchlist.map((entry) => {
 						const isActive = selected === entry.address;
-						const seed = avatarSeed(entry.label || entry.address);
+						const av = avatarFor(entry.label || entry.address);
 						return (
 							<li
 								key={entry.address}
 								className={`group flex items-center gap-2 rounded-xl px-1.5 py-1 transition ${
-									isActive ? "bg-canvas ring-1 ring-brand/40" : "hover:bg-canvas/60"
+									isActive
+										? "bg-gradient-to-r from-brand/15 via-brand-soft to-brand-2/15 ring-1 ring-brand/30"
+										: "hover:bg-canvas"
 								}`}
 							>
 								<button
@@ -92,28 +117,27 @@ export function Watchlist({
 									className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1.5 py-1.5 text-left"
 								>
 									<span
-										className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold ${
-											isActive
-												? "bg-brand text-canvas"
-												: "bg-surface-2 text-zinc-300 group-hover:bg-edge"
-										}`}
+										className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold ${av.className}`}
 									>
-										{seed}
+										{av.letter}
 									</span>
 									<span className="min-w-0 flex-1">
-										<span className="block truncate text-sm font-semibold text-zinc-100">
+										<span className="block truncate text-sm font-semibold text-ink">
 											{entry.label || "Unlabeled"}
 										</span>
-										<span className="block truncate font-mono text-[11px] text-zinc-500">
+										<span className="block truncate font-mono text-[11px] text-mute">
 											{entry.address.slice(0, 10)}…{entry.address.slice(-6)}
 										</span>
 									</span>
+									{isActive ? (
+										<span className="h-2 w-2 shrink-0 rounded-full bg-brand-2" />
+									) : null}
 								</button>
 								<button
 									type="button"
 									onClick={(e) => onRemove(e, entry.address)}
 									aria-label="remove"
-									className="mr-1 grid h-7 w-7 shrink-0 place-items-center rounded-full text-zinc-500 opacity-0 transition group-hover:opacity-100 hover:bg-down/15 hover:text-down"
+									className="mr-1 grid h-7 w-7 shrink-0 place-items-center rounded-full text-mute-2 opacity-0 transition group-hover:opacity-100 hover:bg-down/10 hover:text-down"
 								>
 									<X className="h-3.5 w-3.5" strokeWidth={2.5} />
 								</button>
@@ -125,14 +149,14 @@ export function Watchlist({
 
 			<form
 				onSubmit={onSubmit}
-				className="border-t border-edge/60 p-3 space-y-2"
+				className="space-y-2 border-t border-edge p-3"
 			>
 				<input
 					type="text"
 					value={input}
 					onChange={(e) => setInput(e.target.value)}
 					placeholder="0x…"
-					className="w-full rounded-lg border border-edge bg-canvas px-3 py-2 font-mono text-xs text-zinc-200 placeholder:text-zinc-600 focus:border-brand/60 focus:outline-none focus:ring-1 focus:ring-brand/30"
+					className="w-full rounded-lg border border-edge bg-surface-2 px-3 py-2 font-mono text-xs text-ink placeholder:text-mute-2 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
 					spellCheck={false}
 				/>
 				<input
@@ -140,19 +164,17 @@ export function Watchlist({
 					value={label}
 					onChange={(e) => setLabel(e.target.value)}
 					placeholder="label (optional)"
-					className="w-full rounded-lg border border-edge bg-canvas px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:border-brand/60 focus:outline-none focus:ring-1 focus:ring-brand/30"
+					className="w-full rounded-lg border border-edge bg-surface-2 px-3 py-2 text-xs text-ink placeholder:text-mute-2 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
 				/>
 				<button
 					type="submit"
 					disabled={pending}
-					className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-canvas transition hover:bg-brand-hover disabled:opacity-50"
+					className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-brand to-brand-2 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:brightness-105 disabled:opacity-50"
 				>
 					<Plus className="h-3.5 w-3.5" strokeWidth={3} />
 					{pending ? "adding…" : "Add wallet"}
 				</button>
-				{error ? (
-					<p className="text-xs text-down">{error}</p>
-				) : null}
+				{error ? <p className="text-xs text-down">{error}</p> : null}
 			</form>
 		</aside>
 	);

@@ -343,6 +343,28 @@ None this milestone — fix is to ingestion accounting / fetch-cap; no prompt ch
 
 ---
 
+## M9.4 — Second SPA redesign (light theme, yellow + orange, Inter)
+
+### Meta-prompts
+
+- Second redesign request — drove the wholesale token + component restyle. Figma file fetched via `get_screenshot` on node `0:1`.
+
+  > i want to redesign the frontend, model the new design after this figma design:https://www.figma.com/design/DwlwgiTrrX29mQHWxZMDiz/Dashboard%E7%BB%83%E4%B9%A0--Community-?node-id=0-1&t=ChalhZ6OSDvBWt2n-1 i want the same functionality as the current frontend, just update the ui
+
+  - Produced: light-theme card aesthetic, COINSPACE-style sidebar with deterministic-palette avatar chips, breadcrumb header, 4-stat row, white wallet-detail card with strategy-tag pills + risk-flag rows, Top protocols / counterparties two-up cards, newsfeed-style chat bubbles with gradient user fill + accent stripe on assistant cards.
+
+- Decision answers on the three open questions:
+
+  > 3 panel, inter, use yellow and orange branding, go
+
+  - Produced: kept three-panel layout (Watchlist / Dossier / Chat), swapped Manrope→Inter, brand palette set to yellow `#f5b800` + orange `#f97316` (gradients between them used for active states + send button + user bubble fill).
+
+### Application prompts
+
+None this milestone — pure UI/styling pass; no new LLM calls or prompt changes.
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 

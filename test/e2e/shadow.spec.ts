@@ -21,7 +21,7 @@ test.describe("Shadow three-panel UI", () => {
 		await expect(page.getByRole("heading", { name: "Chat" })).toBeVisible();
 		// Dossier empty-state message (we haven't selected a wallet yet)
 		await expect(
-			page.getByText("Select a wallet from the watchlist."),
+			page.getByText("No wallet selected"),
 		).toBeVisible();
 		// Tagline
 		await expect(
@@ -96,11 +96,9 @@ test.describe("Shadow three-panel UI", () => {
 			{ timeout: 30_000 },
 		).toBeGreaterThan(40);
 
-		// At least one strategy tag should render in the yellow Strategy card
-		// (rendered as <li> rows inside the brand-yellow card).
-		const strategyCard = page.locator(
-			"div.bg-brand:has(h3:text-is('Strategy'))",
-		);
+		// At least one strategy tag should render. Strategy card is keyed by
+		// data-testid since the visual treatment changed in M9.4.
+		const strategyCard = page.getByTestId("strategy-card");
 		await expect(strategyCard).toBeVisible();
 		const tagItems = strategyCard.locator("ul > li");
 		await expect(tagItems.first()).toBeVisible();
@@ -151,7 +149,7 @@ test.describe("Shadow three-panel UI", () => {
 		const truncatedAfter = `${TEST_WALLET.slice(0, 10)}…${TEST_WALLET.slice(-6)}`;
 		await expect(page.getByText(truncatedAfter)).toHaveCount(0);
 		await expect(
-			page.getByText("Select a wallet from the watchlist."),
+			page.getByText("No wallet selected"),
 		).toBeVisible();
 	});
 });
