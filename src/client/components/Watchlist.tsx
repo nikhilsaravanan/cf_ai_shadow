@@ -1,5 +1,15 @@
 import { useState, type FormEvent } from "react";
-import { Plus, X, Wallet } from "lucide-react";
+import {
+	Plus,
+	X,
+	LayoutDashboard,
+	BarChart3,
+	List,
+	BookOpen,
+	HelpCircle,
+	LogOut,
+	Eye,
+} from "lucide-react";
 import type { ResearcherAgent, ResearcherState } from "../../server";
 
 type AgentLike = {
@@ -31,6 +41,16 @@ function avatarFor(seed: string): { className: string; letter: string } {
 	};
 }
 
+const STATIC_NAV = [
+	{ icon: LayoutDashboard, label: "Dashboard", active: true },
+	{ icon: BarChart3, label: "Analytics", active: false },
+];
+
+const ACCOUNT_NAV = [
+	{ icon: BookOpen, label: "Documentation" },
+	{ icon: HelpCircle, label: "FAQ" },
+];
+
 export function Watchlist({
 	agent,
 	state,
@@ -46,6 +66,7 @@ export function Watchlist({
 	const [label, setLabel] = useState("");
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [adding, setAdding] = useState(false);
 
 	const onSubmit = async (e: FormEvent) => {
 		e.preventDefault();
@@ -63,6 +84,7 @@ export function Watchlist({
 			);
 			setInput("");
 			setLabel("");
+			setAdding(false);
 			onSelect(a.toLowerCase());
 		} catch (err) {
 			setError(String(err instanceof Error ? err.message : err));
@@ -78,104 +100,226 @@ export function Watchlist({
 	};
 
 	return (
-		<aside className="flex h-full min-h-0 flex-col rounded-2xl border border-edge bg-surface shadow-[0_1px_2px_rgba(17,24,39,0.04)]">
-			<div className="flex items-center justify-between px-5 pt-5 pb-3">
-				<div>
-					<p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-mute-2">
-						Quick access
-					</p>
-					<h2 className="mt-1 flex items-center gap-2 text-sm font-bold text-ink">
-						<Wallet className="h-4 w-4 text-brand-2" strokeWidth={2.5} />
-						Watchlist
-					</h2>
-				</div>
-				<span className="rounded-full bg-canvas px-2 py-0.5 text-[11px] font-semibold text-mute">
-					{state.watchlist.length}
+		<aside className="flex h-full min-h-0 flex-col border-r border-edge bg-surface">
+			<div className="flex items-center gap-2.5 border-b border-edge px-5 py-4">
+				<span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-brand-2 text-white shadow-sm">
+					<svg
+						viewBox="0 0 24 24"
+						className="h-5 w-5"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="2.5"
+					>
+						<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+					</svg>
 				</span>
+				<div className="leading-tight">
+					<h1 className="text-base font-bold tracking-tight text-ink">
+						Shadow
+					</h1>
+					<p className="text-[10px] uppercase tracking-[0.18em] text-mute">
+						DeFi Research
+					</p>
+				</div>
 			</div>
-			<ul className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2">
-				{state.watchlist.length === 0 ? (
-					<li className="px-3 py-3 text-xs text-mute">
-						No wallets yet. Add one to start ingesting.
-					</li>
-				) : (
-					state.watchlist.map((entry) => {
-						const isActive = selected === entry.address;
-						const av = avatarFor(entry.label || entry.address);
-						return (
-							<li
-								key={entry.address}
-								className={`group flex items-center gap-2 rounded-xl px-1.5 py-1 transition ${
-									isActive
-										? "bg-gradient-to-r from-brand/15 via-brand-soft to-brand-2/15 ring-1 ring-brand/30"
-										: "hover:bg-canvas"
-								}`}
-							>
-								<button
-									type="button"
-									onClick={() => onSelect(entry.address)}
-									className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1.5 py-1.5 text-left"
-								>
-									<span
-										className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold ${av.className}`}
-									>
-										{av.letter}
-									</span>
-									<span className="min-w-0 flex-1">
-										<span className="block truncate text-sm font-semibold text-ink">
-											{entry.label || "Unlabeled"}
-										</span>
-										<span className="block truncate font-mono text-[11px] text-mute">
-											{entry.address.slice(0, 10)}…{entry.address.slice(-6)}
-										</span>
-									</span>
-									{isActive ? (
-										<span className="h-2 w-2 shrink-0 rounded-full bg-brand-2" />
-									) : null}
-								</button>
-								<button
-									type="button"
-									onClick={(e) => onRemove(e, entry.address)}
-									aria-label="remove"
-									className="mr-1 grid h-7 w-7 shrink-0 place-items-center rounded-full text-mute-2 opacity-0 transition group-hover:opacity-100 hover:bg-down/10 hover:text-down"
-								>
-									<X className="h-3.5 w-3.5" strokeWidth={2.5} />
-								</button>
-							</li>
-						);
-					})
-				)}
-			</ul>
 
-			<form
-				onSubmit={onSubmit}
-				className="space-y-2 border-t border-edge p-3"
-			>
-				<input
-					type="text"
-					value={input}
-					onChange={(e) => setInput(e.target.value)}
-					placeholder="0x…"
-					className="w-full rounded-lg border border-edge bg-surface-2 px-3 py-2 font-mono text-xs text-ink placeholder:text-mute-2 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
-					spellCheck={false}
-				/>
-				<input
-					type="text"
-					value={label}
-					onChange={(e) => setLabel(e.target.value)}
-					placeholder="label (optional)"
-					className="w-full rounded-lg border border-edge bg-surface-2 px-3 py-2 text-xs text-ink placeholder:text-mute-2 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
-				/>
+			<div className="flex-1 min-h-0 overflow-y-auto px-3 pt-4 pb-3">
+				<NavSection title="Quick Access">
+					{STATIC_NAV.map((n) => (
+						<NavItem
+							key={n.label}
+							icon={n.icon}
+							label={n.label}
+							active={n.active}
+						/>
+					))}
+				</NavSection>
+
+				<NavSection title="Watchlist" trailing={state.watchlist.length}>
+					<ul className="space-y-0.5">
+						{state.watchlist.length === 0 ? (
+							<li className="px-3 py-2 text-xs text-mute">
+								No wallets yet.
+							</li>
+						) : (
+							state.watchlist.map((entry) => {
+								const isActive = selected === entry.address;
+								const av = avatarFor(entry.label || entry.address);
+								return (
+									<li
+										key={entry.address}
+										className={`group flex items-center gap-2 rounded-xl px-1.5 py-1 transition ${
+											isActive
+												? "bg-gradient-to-r from-brand/15 via-brand-soft to-brand-2/15 ring-1 ring-brand/30"
+												: "hover:bg-canvas"
+										}`}
+									>
+										<button
+											type="button"
+											onClick={() => onSelect(entry.address)}
+											className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1.5 py-1.5 text-left"
+										>
+											<span
+												className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold ${av.className}`}
+											>
+												{av.letter}
+											</span>
+											<span className="min-w-0 flex-1">
+												<span className="block truncate text-sm font-semibold text-ink">
+													{entry.label || "Unlabeled"}
+												</span>
+												<span className="block truncate font-mono text-[10px] text-mute">
+													{entry.address.slice(0, 10)}…{entry.address.slice(-6)}
+												</span>
+											</span>
+											{isActive ? (
+												<span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
+											) : null}
+										</button>
+										<button
+											type="button"
+											onClick={(e) => onRemove(e, entry.address)}
+											aria-label="remove"
+											className="mr-1 grid h-6 w-6 shrink-0 place-items-center rounded-full text-mute-2 opacity-0 transition group-hover:opacity-100 hover:bg-down/10 hover:text-down"
+										>
+											<X className="h-3 w-3" strokeWidth={2.5} />
+										</button>
+									</li>
+								);
+							})
+						)}
+					</ul>
+
+					{adding ? (
+						<form
+							onSubmit={onSubmit}
+							className="mt-2 space-y-2 rounded-xl border border-edge bg-surface-2 p-2.5"
+						>
+							<input
+								type="text"
+								value={input}
+								onChange={(e) => setInput(e.target.value)}
+								placeholder="0x…"
+								className="w-full rounded-lg border border-edge bg-surface px-2.5 py-1.5 font-mono text-xs text-ink placeholder:text-mute-2 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+								spellCheck={false}
+								autoFocus
+							/>
+							<input
+								type="text"
+								value={label}
+								onChange={(e) => setLabel(e.target.value)}
+								placeholder="label (optional)"
+								className="w-full rounded-lg border border-edge bg-surface px-2.5 py-1.5 text-xs text-ink placeholder:text-mute-2 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+							/>
+							<div className="flex gap-1.5">
+								<button
+									type="submit"
+									disabled={pending}
+									className="flex-1 rounded-lg bg-gradient-to-r from-brand to-brand-2 px-2 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:brightness-105 disabled:opacity-50"
+								>
+									{pending ? "…" : "Add"}
+								</button>
+								<button
+									type="button"
+									onClick={() => {
+										setAdding(false);
+										setInput("");
+										setLabel("");
+										setError(null);
+									}}
+									className="rounded-lg border border-edge bg-surface px-2 py-1.5 text-[11px] font-semibold text-mute hover:text-ink"
+								>
+									Cancel
+								</button>
+							</div>
+							{error ? <p className="text-[11px] text-down">{error}</p> : null}
+						</form>
+					) : (
+						<button
+							type="button"
+							onClick={() => setAdding(true)}
+							className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-edge bg-surface-2 px-3 py-2 text-xs font-semibold text-mute transition hover:border-brand hover:bg-brand-soft hover:text-brand-strong"
+						>
+							<Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+							Add wallet
+						</button>
+					)}
+				</NavSection>
+
+				<NavSection title="Service">
+					<NavItem icon={Eye} label="Recent activity" active={false} />
+					<NavItem icon={List} label="Saved queries" active={false} />
+				</NavSection>
+
+				<NavSection title="Account">
+					{ACCOUNT_NAV.map((n) => (
+						<NavItem key={n.label} icon={n.icon} label={n.label} />
+					))}
+				</NavSection>
+			</div>
+
+			<div className="border-t border-edge px-3 py-3">
 				<button
-					type="submit"
-					disabled={pending}
-					className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-brand to-brand-2 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:brightness-105 disabled:opacity-50"
+					type="button"
+					className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-mute hover:bg-canvas hover:text-ink"
 				>
-					<Plus className="h-3.5 w-3.5" strokeWidth={3} />
-					{pending ? "adding…" : "Add wallet"}
+					<LogOut className="h-4 w-4" strokeWidth={2} />
+					Log out
 				</button>
-				{error ? <p className="text-xs text-down">{error}</p> : null}
-			</form>
+			</div>
 		</aside>
+	);
+}
+
+function NavSection({
+	title,
+	trailing,
+	children,
+}: {
+	title: string;
+	trailing?: number;
+	children: React.ReactNode;
+}) {
+	return (
+		<div className="mb-4">
+			<div className="mb-1.5 flex items-center justify-between px-3">
+				<h2 className="text-[10px] font-bold uppercase tracking-[0.18em] text-mute-2">
+					{title}
+				</h2>
+				{trailing !== undefined ? (
+					<span className="rounded-full bg-canvas px-1.5 py-0.5 text-[10px] font-semibold text-mute">
+						{trailing}
+					</span>
+				) : null}
+			</div>
+			{children}
+		</div>
+	);
+}
+
+function NavItem({
+	icon: Icon,
+	label,
+	active = false,
+}: {
+	icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+	label: string;
+	active?: boolean;
+}) {
+	return (
+		<button
+			type="button"
+			className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
+				active
+					? "bg-gradient-to-r from-brand/15 via-brand-soft to-brand-2/15 text-brand-strong ring-1 ring-brand/25"
+					: "text-mute hover:bg-canvas hover:text-ink"
+			}`}
+		>
+			<Icon
+				className={`h-4 w-4 ${active ? "text-brand-2" : ""}`}
+				strokeWidth={2}
+			/>
+			{label}
+		</button>
 	);
 }

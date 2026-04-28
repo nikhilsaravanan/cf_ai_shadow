@@ -365,6 +365,23 @@ None this milestone — pure UI/styling pass; no new LLM calls or prompt changes
 
 ---
 
+## M9.5 — Structural port of the Figma redesign
+
+### Meta-prompts
+
+- Corrective on M9.4 — the prior redesign was a token swap layered on the prior structure rather than an actual port:
+
+  > copy more of the design from the new figma template, the frontend still just looks like the old design with colors changed. use playwright whenever youre working on uiux to debug yourself
+
+  - Produced: M9.5 plan amendment + structural rewrite. Layout flipped from `[header / [sidebar | center | chat]]` to `[sidebar | (header / [center | rightRail])]`. New components: `Sparkline.tsx` (deterministic-from-seed inline-SVG area chart) and `RightRail.tsx` (Top Protocols + Chat stacked, shared `useAgent` instance). Watchlist became a multi-section nav (Quick Access / Watchlist / Service / Account) with branded header + bottom Log out. Dossier got tabbed wallet hero (Overview / Activity / Risk), protocol-breakdown stacked bar, and a `LatestActivitiesCard` pulling `walletAgent.stub.getRecentActivity(20)` via `useEffect`.
+  - Manual edits: also added a `feedback_uiux_iterate_with_playwright.md` memory entry to enforce screenshot-between-changes for future UI work.
+
+### Application prompts
+
+None this milestone — pure UI/structural pass; no new LLM calls or prompt changes.
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 

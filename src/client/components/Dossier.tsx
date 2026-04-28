@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useAgent } from "agents/react";
 import {
 	RefreshCw,
@@ -6,12 +7,24 @@ import {
 	Clock,
 	AlertTriangle,
 	ArrowUpRight,
+	ArrowDownRight,
 	ChevronRight,
 	Wallet,
 } from "lucide-react";
-import type { WalletAgent, WalletState } from "../../walletAgent";
+import type {
+	WalletAgent,
+	WalletState,
+	TransactionRow,
+	Classification,
+} from "../../walletAgent";
+import { Sparkline } from "./Sparkline";
 
-type AgentLike = { stub: { refresh: () => Promise<unknown> } };
+type AgentLike = {
+	stub: {
+		refresh: () => Promise<unknown>;
+		getRecentActivity: (limit: number) => Promise<TransactionRow[]>;
+	};
+};
 
 export function Dossier({
 	agent,
@@ -22,7 +35,7 @@ export function Dossier({
 }) {
 	if (!selected) {
 		return (
-			<section className="flex h-full min-h-0 flex-col items-center justify-center rounded-2xl border border-edge bg-surface shadow-[0_1px_2px_rgba(17,24,39,0.04)] text-sm text-mute">
+			<section className="flex h-full min-h-0 flex-col items-center justify-center rounded-2xl border border-edge bg-surface text-sm text-mute">
 				<div className="grid h-14 w-14 place-items-center rounded-full bg-brand-soft text-brand-strong">
 					<Wallet className="h-6 w-6" strokeWidth={1.8} />
 				</div>
@@ -43,23 +56,17 @@ function relativeTime(ms: number): string {
 	return `${Math.floor(diff / 86_400_000)}d ago`;
 }
 
-const PROTO_PALETTE = [
-	"bg-amber-100 text-amber-700",
-	"bg-orange-100 text-orange-700",
-	"bg-rose-100 text-rose-700",
-	"bg-violet-100 text-violet-700",
-	"bg-sky-100 text-sky-700",
-	"bg-emerald-100 text-emerald-700",
-];
-
-function chipFor(seed: string): { className: string; letter: string } {
-	let hash = 0;
-	for (const ch of seed) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
-	return {
-		letter: (seed.charAt(0) || "?").toUpperCase(),
-		className: PROTO_PALETTE[Math.abs(hash) % PROTO_PALETTE.length],
-	};
-}
+const CATEGORY_PALETTE: Record<string, string> = {
+	swap: "#f59e0b",
+	lp: "#fb923c",
+	lending: "#f97316",
+	transfer: "#a78bfa",
+	bridge: "#38bdf8",
+	governance: "#34d399",
+	airdrop: "#facc15",
+	mint: "#fb7185",
+	other: "#9ca3af",
+};
 
 function DossierPanel({
 	parentAgent,
@@ -77,19 +84,37 @@ function DossierPanel({
 	const dossier = state?.dossier;
 	const hasDossier = !!(dossier && dossier.version > 0);
 
+	const [tab, setTab] = useState<"overview" | "activity" | "risk">("overview");
+	const [recent, setRecent] = useState<TransactionRow[]>([]);
+
+	useEffect(() => {
+		const stub = (walletAgent as unknown as AgentLike).stub;
+		let cancelled = false;
+		stub
+			.getRecentActivity(20)
+			.then((rows) => {
+				if (!cancelled) setRecent(rows);
+			})
+			.catch(() => {
+				if (!cancelled) setRecent([]);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [walletAgent, state?.txCount, state?.updatedAt]);
+
 	const onRefresh = async () => {
 		await (walletAgent as unknown as AgentLike).stub.refresh();
 	};
 
 	return (
 		<section className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto pr-1">
-			<Breadcrumb address={address} />
-
 			<StatRow
 				txCount={state?.txCount ?? 0}
 				lastSyncedBlock={state?.lastSyncedBlock ?? 0}
 				updatedAt={state?.updatedAt ?? 0}
 				riskCount={dossier?.riskFlags.length ?? 0}
+				seed={address}
 			/>
 
 			<HeroCard
@@ -98,26 +123,117 @@ function DossierPanel({
 				updatedAt={state?.updatedAt ?? 0}
 				dossier={dossier}
 				hasDossier={hasDossier}
+				tab={tab}
+				onTabChange={setTab}
 				onRefresh={onRefresh}
 			/>
 
-			<div className="grid grid-cols-2 gap-4">
-				<ProtocolsCard rows={dossier?.topProtocols ?? []} />
-				<CounterpartiesCard rows={dossier?.topCounterparties ?? []} />
-			</div>
+			<LatestActivitiesCard rows={recent} />
 		</section>
 	);
 }
 
-function Breadcrumb({ address }: { address: string }) {
+function StatRow({
+	txCount,
+	lastSyncedBlock,
+	updatedAt,
+	riskCount,
+	seed,
+}: {
+	txCount: number;
+	lastSyncedBlock: number;
+	updatedAt: number;
+	riskCount: number;
+	seed: string;
+}) {
+	const cards = [
+		{
+			label: "Transactions",
+			ticker: "TXS",
+			value: txCount.toLocaleString(),
+			delta: "+0.0%",
+			deltaUp: true,
+			icon: Activity,
+			tint: "bg-amber-100 text-amber-700",
+			color: "#f59e0b",
+		},
+		{
+			label: "Synced block",
+			ticker: "BLK",
+			value: lastSyncedBlock ? lastSyncedBlock.toLocaleString() : "—",
+			delta: "live",
+			deltaUp: true,
+			icon: Layers,
+			tint: "bg-sky-100 text-sky-700",
+			color: "#0ea5e9",
+		},
+		{
+			label: "Last sync",
+			ticker: "SYNC",
+			value: relativeTime(updatedAt),
+			delta: "auto",
+			deltaUp: true,
+			icon: Clock,
+			tint: "bg-emerald-100 text-emerald-700",
+			color: "#10b981",
+		},
+		{
+			label: "Risk flags",
+			ticker: "RISK",
+			value: String(riskCount),
+			delta: riskCount > 0 ? "warn" : "clean",
+			deltaUp: riskCount === 0,
+			icon: AlertTriangle,
+			tint:
+				riskCount > 0
+					? "bg-rose-100 text-rose-700"
+					: "bg-violet-100 text-violet-700",
+			color: riskCount > 0 ? "#ef4444" : "#a78bfa",
+		},
+	];
 	return (
-		<nav className="flex items-center gap-1.5 text-xs text-mute">
-			<span>Watchlist</span>
-			<ChevronRight className="h-3 w-3 text-mute-2" strokeWidth={2.5} />
-			<span className="font-mono text-ink">
-				{address.slice(0, 10)}…{address.slice(-6)}
-			</span>
-		</nav>
+		<div className="grid grid-cols-4 gap-3">
+			{cards.map((c, i) => (
+				<div
+					key={c.label}
+					className="relative overflow-hidden rounded-2xl border border-edge bg-surface shadow-[0_1px_2px_rgba(17,24,39,0.04)]"
+				>
+					<div className="flex items-start justify-between px-4 pt-3.5">
+						<div className="flex items-center gap-2.5">
+							<span
+								className={`grid h-9 w-9 place-items-center rounded-full ${c.tint}`}
+							>
+								<c.icon className="h-4 w-4" strokeWidth={2.2} />
+							</span>
+							<div className="leading-tight">
+								<p className="text-xs font-bold text-ink">{c.ticker}</p>
+								<p className="text-[10px] text-mute">{c.label}</p>
+							</div>
+						</div>
+						<p
+							className={`flex items-center gap-0.5 text-[10px] font-semibold ${
+								c.deltaUp ? "text-up" : "text-down"
+							}`}
+						>
+							{c.delta}
+							{c.deltaUp ? (
+								<ArrowUpRight className="h-3 w-3" strokeWidth={2.5} />
+							) : (
+								<ArrowDownRight className="h-3 w-3" strokeWidth={2.5} />
+							)}
+						</p>
+					</div>
+					<p className="mt-1 px-4 text-2xl font-bold tabular-nums text-ink">
+						{c.value}
+					</p>
+					<Sparkline
+						seed={`${seed}-${i}`}
+						color={c.color}
+						gradientId={`spark-${i}`}
+					/>
+				</div>
+			))}
+		</div>
 	);
 }
 
@@ -127,44 +243,53 @@ function HeroCard({
 	updatedAt,
 	dossier,
 	hasDossier,
+	tab,
+	onTabChange,
 	onRefresh,
 }: {
 	address: string;
 	txCount: number;
 	updatedAt: number;
-	dossier: { strategyTags: string[]; narrative: string; riskFlags: { severity: "info" | "warn" | "high"; message: string }[] } | undefined;
+	dossier: WalletState["dossier"] | undefined;
 	hasDossier: boolean;
+	tab: "overview" | "activity" | "risk";
+	onTabChange: (t: "overview" | "activity" | "risk") => void;
 	onRefresh: () => Promise<void>;
 }) {
+	const tabs: { id: "overview" | "activity" | "risk"; label: string }[] = [
+		{ id: "overview", label: "Overview" },
+		{ id: "activity", label: "Activity" },
+		{ id: "risk", label: "Risk" },
+	];
 	return (
 		<div className="rounded-2xl border border-edge bg-surface shadow-[0_1px_2px_rgba(17,24,39,0.04)]">
-			<div className="flex items-start justify-between gap-4 border-b border-edge px-6 py-4">
+			<div className="flex items-start justify-between gap-4 px-6 pt-5 pb-3">
 				<div className="min-w-0">
-					<p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-mute-2">
-						Wallet
-					</p>
+					<div className="flex items-center gap-2 text-xs text-mute">
+						<span>Watchlist</span>
+						<ChevronRight className="h-3 w-3 text-mute-2" strokeWidth={2.5} />
+						<span className="font-mono text-ink">
+							{address.slice(0, 10)}…{address.slice(-6)}
+						</span>
+					</div>
 					<h2
-						className="mt-1 truncate font-mono text-sm text-ink"
+						className="mt-1 truncate font-mono text-base text-ink"
 						title={address}
 					>
 						{address}
 					</h2>
 					<p className="mt-1 text-xs text-mute">
-						{txCount.toLocaleString()} txs · updated {relativeTime(updatedAt)}
+						<span className="font-semibold text-ink">
+							{txCount.toLocaleString()}
+						</span>{" "}
+						transactions · updated {relativeTime(updatedAt)}
 					</p>
 				</div>
 				<div className="flex shrink-0 items-center gap-2">
-					<div className="flex gap-0.5 rounded-lg border border-edge bg-surface-2 p-0.5 text-[11px] font-semibold">
-						<span className="rounded-md bg-gradient-to-r from-brand to-brand-2 px-2.5 py-1 text-white">
-							All
-						</span>
-						<span className="px-2.5 py-1 text-mute">7d</span>
-						<span className="px-2.5 py-1 text-mute">30d</span>
-					</div>
 					<button
 						type="button"
 						onClick={onRefresh}
-						className="flex items-center gap-1.5 rounded-lg border border-edge bg-surface px-3 py-1.5 text-xs font-semibold text-ink transition hover:border-brand hover:text-brand-strong"
+						className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-brand to-brand-2 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-105"
 					>
 						<RefreshCw className="h-3.5 w-3.5" strokeWidth={2.5} />
 						Refresh
@@ -172,9 +297,50 @@ function HeroCard({
 				</div>
 			</div>
 
-			<div className="space-y-4 px-6 py-5">
-				{hasDossier && dossier ? (
-					<>
+			<nav className="flex items-center gap-1 border-b border-edge px-6">
+				{tabs.map((t) => {
+					const active = tab === t.id;
+					return (
+						<button
+							key={t.id}
+							type="button"
+							onClick={() => onTabChange(t.id)}
+							className={`relative px-3 py-2.5 text-xs font-semibold transition ${
+								active ? "text-brand-strong" : "text-mute hover:text-ink"
+							}`}
+						>
+							{t.label}
+							{active ? (
+								<span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-gradient-to-r from-brand to-brand-2" />
+							) : null}
+						</button>
+					);
+				})}
+				<div className="ml-auto flex items-center gap-1 py-2">
+					<span className="rounded-md bg-canvas px-2 py-0.5 text-[10px] font-semibold text-mute">
+						All
+					</span>
+					<span className="rounded-md px-2 py-0.5 text-[10px] font-semibold text-mute-2">
+						7d
+					</span>
+					<span className="rounded-md px-2 py-0.5 text-[10px] font-semibold text-mute-2">
+						30d
+					</span>
+				</div>
+			</nav>
+
+			<div className="px-6 py-5">
+				{!hasDossier || !dossier ? (
+					<p className="text-sm text-mute">
+						No dossier yet — click Refresh to kick off ingestion, or wait for
+						the 10-minute scheduled sweep.
+					</p>
+				) : tab === "overview" ? (
+					<div className="space-y-4">
+						<CategoryBar
+							protocols={dossier.topProtocols}
+							totalTxs={txCount}
+						/>
 						<StrategyTags tags={dossier.strategyTags} />
 						<p
 							data-testid="dossier-narrative"
@@ -182,17 +348,71 @@ function HeroCard({
 						>
 							{dossier.narrative}
 						</p>
-						{dossier.riskFlags.length > 0 ? (
-							<RiskFlags flags={dossier.riskFlags} />
-						) : null}
-					</>
+					</div>
+				) : tab === "activity" ? (
+					<CounterpartiesList rows={dossier.topCounterparties} />
 				) : (
-					<p className="text-sm text-mute">
-						No dossier yet — click Refresh to kick off ingestion, or wait for
-						the 10-minute scheduled sweep.
-					</p>
+					<RiskFlags flags={dossier.riskFlags} />
 				)}
 			</div>
+		</div>
+	);
+}
+
+function CategoryBar({
+	protocols,
+	totalTxs,
+}: {
+	protocols: { protocol: string; interactionCount: number }[];
+	totalTxs: number;
+}) {
+	if (protocols.length === 0 || totalTxs === 0) return null;
+	const top = protocols.slice(0, 6);
+	const totalAccounted = top.reduce((s, p) => s + p.interactionCount, 0);
+	const others = Math.max(0, totalTxs - totalAccounted);
+	const segments = [
+		...top.map((p, i) => ({
+			label: p.protocol,
+			count: p.interactionCount,
+			color: Object.values(CATEGORY_PALETTE)[i % 9],
+		})),
+		...(others > 0
+			? [{ label: "Other", count: others, color: CATEGORY_PALETTE.other }]
+			: []),
+	];
+	const total = segments.reduce((s, x) => s + x.count, 0) || 1;
+	return (
+		<div>
+			<div className="mb-2 flex items-center justify-between">
+				<p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-mute-2">
+					Protocol breakdown
+				</p>
+				<p className="text-[11px] text-mute">{totalTxs.toLocaleString()} txs</p>
+			</div>
+			<div className="flex h-3 w-full overflow-hidden rounded-full bg-canvas">
+				{segments.map((s, i) => (
+					<span
+						key={i}
+						style={{ width: `${(s.count / total) * 100}%`, background: s.color }}
+						title={`${s.label}: ${s.count}`}
+					/>
+				))}
+			</div>
+			<ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+				{segments.map((s, i) => (
+					<li
+						key={i}
+						className="flex items-center gap-1.5 text-[11px] text-ink-2"
+					>
+						<span
+							className="h-2 w-2 rounded-full"
+							style={{ background: s.color }}
+						/>
+						<span className="font-medium">{s.label}</span>
+						<span className="text-mute">· {s.count}</span>
+					</li>
+				))}
+			</ul>
 		</div>
 	);
 }
@@ -226,167 +446,35 @@ function StrategyTags({ tags }: { tags: string[] }) {
 	);
 }
 
-function StatRow({
-	txCount,
-	lastSyncedBlock,
-	updatedAt,
-	riskCount,
-}: {
-	txCount: number;
-	lastSyncedBlock: number;
-	updatedAt: number;
-	riskCount: number;
-}) {
-	const cards = [
-		{
-			label: "Transactions",
-			value: txCount.toLocaleString(),
-			icon: Activity,
-			tint: "bg-amber-100 text-amber-700",
-		},
-		{
-			label: "Synced block",
-			value: lastSyncedBlock ? lastSyncedBlock.toLocaleString() : "—",
-			icon: Layers,
-			tint: "bg-sky-100 text-sky-700",
-		},
-		{
-			label: "Last sync",
-			value: relativeTime(updatedAt),
-			icon: Clock,
-			tint: "bg-emerald-100 text-emerald-700",
-		},
-		{
-			label: "Risk flags",
-			value: String(riskCount),
-			icon: AlertTriangle,
-			tint:
-				riskCount > 0
-					? "bg-rose-100 text-rose-700"
-					: "bg-violet-100 text-violet-700",
-		},
-	];
-	return (
-		<div className="grid grid-cols-4 gap-3">
-			{cards.map((c) => (
-				<div
-					key={c.label}
-					className="rounded-2xl border border-edge bg-surface px-4 py-3 shadow-[0_1px_2px_rgba(17,24,39,0.04)]"
-				>
-					<div className="flex items-center justify-between">
-						<span
-							className={`grid h-8 w-8 place-items-center rounded-full ${c.tint}`}
-						>
-							<c.icon className="h-4 w-4" strokeWidth={2.2} />
-						</span>
-						<ArrowUpRight className="h-3.5 w-3.5 text-mute-2" />
-					</div>
-					<p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-mute-2">
-						{c.label}
-					</p>
-					<p className="mt-1 text-xl font-bold tabular-nums text-ink">
-						{c.value}
-					</p>
-				</div>
-			))}
-		</div>
-	);
-}
-
-function ProtocolsCard({
-	rows,
-}: {
-	rows: { protocol: string; interactionCount: number }[];
-}) {
-	return (
-		<div className="rounded-2xl border border-edge bg-surface shadow-[0_1px_2px_rgba(17,24,39,0.04)]">
-			<div className="flex items-center justify-between border-b border-edge px-5 py-3">
-				<h3 className="text-sm font-bold text-ink">Top protocols</h3>
-				<span className="text-[11px] font-medium text-mute">{rows.length}</span>
-			</div>
-			{rows.length === 0 ? (
-				<p className="px-5 py-4 text-sm text-mute">—</p>
-			) : (
-				<ul className="divide-y divide-edge-soft">
-					{rows.map((r) => {
-						const chip = chipFor(r.protocol);
-						return (
-							<li
-								key={r.protocol}
-								className="flex items-center justify-between gap-3 px-5 py-2.5"
-							>
-								<div className="flex min-w-0 items-center gap-3">
-									<span
-										className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ${chip.className}`}
-									>
-										{chip.letter}
-									</span>
-									<div className="min-w-0">
-										<p className="truncate text-sm font-semibold text-ink">
-											{r.protocol}
-										</p>
-										<p className="text-[11px] text-mute">
-											{r.interactionCount} interactions
-										</p>
-									</div>
-								</div>
-								<span className="rounded-full bg-canvas px-2 py-0.5 text-xs font-semibold tabular-nums text-ink-2">
-									{r.interactionCount}
-								</span>
-							</li>
-						);
-					})}
-				</ul>
-			)}
-		</div>
-	);
-}
-
-function CounterpartiesCard({
+function CounterpartiesList({
 	rows,
 }: {
 	rows: { address: string; label?: string; count: number }[];
 }) {
+	if (rows.length === 0) {
+		return <p className="text-sm text-mute">No counterparty data yet.</p>;
+	}
 	return (
-		<div className="rounded-2xl border border-edge bg-surface shadow-[0_1px_2px_rgba(17,24,39,0.04)]">
-			<div className="flex items-center justify-between border-b border-edge px-5 py-3">
-				<h3 className="text-sm font-bold text-ink">Top counterparties</h3>
-				<span className="text-[11px] font-medium text-mute">{rows.length}</span>
-			</div>
-			{rows.length === 0 ? (
-				<p className="px-5 py-4 text-sm text-mute">—</p>
-			) : (
-				<table className="w-full text-sm">
-					<thead>
-						<tr className="border-b border-edge-soft text-[10px] font-semibold uppercase tracking-[0.16em] text-mute-2">
-							<th className="px-5 py-2 text-left">Address</th>
-							<th className="px-5 py-2 text-right">Count</th>
-						</tr>
-					</thead>
-					<tbody className="divide-y divide-edge-soft">
-						{rows.map((r) => (
-							<tr key={r.address}>
-								<td className="px-5 py-2.5">
-									<p
-										className={`truncate text-sm font-semibold text-ink ${
-											r.label ? "" : "font-mono"
-										}`}
-									>
-										{r.label || `${r.address.slice(0, 10)}…${r.address.slice(-4)}`}
-									</p>
-									<p className="truncate font-mono text-[11px] text-mute">
-										{r.address.slice(0, 10)}…{r.address.slice(-6)}
-									</p>
-								</td>
-								<td className="px-5 py-2.5 text-right text-sm font-semibold tabular-nums text-ink-2">
-									{r.count}
-								</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
-			)}
-		</div>
+		<ul className="divide-y divide-edge-soft">
+			{rows.map((r) => (
+				<li
+					key={r.address}
+					className="flex items-center justify-between gap-3 py-2.5"
+				>
+					<div className="min-w-0">
+						<p className="truncate text-sm font-semibold text-ink">
+							{r.label || `${r.address.slice(0, 10)}…${r.address.slice(-4)}`}
+						</p>
+						<p className="truncate font-mono text-[11px] text-mute">
+							{r.address}
+						</p>
+					</div>
+					<span className="rounded-full bg-canvas px-2.5 py-1 text-xs font-semibold tabular-nums text-ink-2">
+						{r.count} txs
+					</span>
+				</li>
+			))}
+		</ul>
 	);
 }
 
@@ -395,33 +483,137 @@ function RiskFlags({
 }: {
 	flags: { severity: "info" | "warn" | "high"; message: string }[];
 }) {
+	if (flags.length === 0) {
+		return <p className="text-sm text-mute">No risk flags.</p>;
+	}
 	return (
-		<div>
-			<div className="mb-2 flex items-center gap-2">
-				<AlertTriangle className="h-3.5 w-3.5 text-down" strokeWidth={2.5} />
-				<p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-mute-2">
-					Risk flags
-				</p>
+		<ul className="space-y-1.5">
+			{flags.map((f, i) => (
+				<li
+					key={i}
+					className={`flex items-start gap-3 rounded-lg border px-3 py-2 text-sm ${
+						f.severity === "high"
+							? "border-rose-200 bg-rose-50 text-rose-800"
+							: f.severity === "warn"
+								? "border-amber-200 bg-amber-50 text-amber-800"
+								: "border-edge bg-surface-2 text-ink-2"
+					}`}
+				>
+					<span className="mt-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+						{f.severity}
+					</span>
+					<span className="leading-relaxed">{f.message}</span>
+				</li>
+			))}
+		</ul>
+	);
+}
+
+function LatestActivitiesCard({ rows }: { rows: TransactionRow[] }) {
+	const [filter, setFilter] = useState<string>("all");
+	const categories = ["all", "swap", "lp", "lending", "transfer", "bridge", "mint", "other"];
+	const filtered = rows.filter((r) => {
+		if (filter === "all") return true;
+		if (!r.classification) return filter === "other";
+		try {
+			const cls = JSON.parse(r.classification) as Classification;
+			return cls.category === filter;
+		} catch {
+			return filter === "other";
+		}
+	});
+	return (
+		<div className="rounded-2xl border border-edge bg-surface shadow-[0_1px_2px_rgba(17,24,39,0.04)]">
+			<div className="flex items-center justify-between border-b border-edge px-6 py-3.5">
+				<h3 className="text-sm font-bold text-ink">Latest Activities</h3>
+				<span className="text-[11px] text-mute">{rows.length} loaded</span>
 			</div>
-			<ul className="space-y-1.5">
-				{flags.map((f, i) => (
-					<li
-						key={i}
-						className={`flex items-start gap-3 rounded-lg border px-3 py-2 text-sm ${
-							f.severity === "high"
-								? "border-rose-200 bg-rose-50 text-rose-800"
-								: f.severity === "warn"
-									? "border-amber-200 bg-amber-50 text-amber-800"
-									: "border-edge bg-surface-2 text-ink-2"
-						}`}
-					>
-						<span className="mt-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-							{f.severity}
-						</span>
-						<span className="leading-relaxed">{f.message}</span>
-					</li>
-				))}
-			</ul>
+			<nav className="flex items-center gap-1 overflow-x-auto border-b border-edge px-4 py-1.5">
+				{categories.map((c) => {
+					const active = filter === c;
+					return (
+						<button
+							key={c}
+							type="button"
+							onClick={() => setFilter(c)}
+							className={`relative px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition ${
+								active ? "text-brand-strong" : "text-mute hover:text-ink"
+							}`}
+						>
+							{c}
+							{active ? (
+								<span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-gradient-to-r from-brand to-brand-2" />
+							) : null}
+						</button>
+					);
+				})}
+			</nav>
+			{filtered.length === 0 ? (
+				<p className="px-6 py-4 text-sm text-mute">
+					{rows.length === 0
+						? "No activity yet — refresh to ingest."
+						: "No transactions in this category."}
+				</p>
+			) : (
+				<table className="w-full text-sm">
+					<thead>
+						<tr className="border-b border-edge-soft text-[10px] font-semibold uppercase tracking-[0.16em] text-mute-2">
+							<th className="px-6 py-2 text-left">Date</th>
+							<th className="px-6 py-2 text-left">Detail</th>
+							<th className="px-6 py-2 text-right">Value</th>
+						</tr>
+					</thead>
+					<tbody className="divide-y divide-edge-soft">
+						{filtered.slice(0, 8).map((r) => {
+							let cls: Classification | null = null;
+							try {
+								cls = r.classification
+									? (JSON.parse(r.classification) as Classification)
+									: null;
+							} catch {}
+							const date = new Date(r.timestamp * 1000);
+							const dateStr = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+							let valueEth = "0";
+							try {
+								valueEth = (Number(BigInt(r.value_wei)) / 1e18).toFixed(4);
+							} catch {}
+							return (
+								<tr key={r.hash}>
+									<td className="px-6 py-3 font-mono text-xs text-mute">
+										{dateStr}
+									</td>
+									<td className="px-6 py-3">
+										<div className="flex items-center gap-2">
+											{cls?.category ? (
+												<span
+													className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+													style={{
+														background:
+															CATEGORY_PALETTE[cls.category] ?? "#9ca3af",
+													}}
+												>
+													{cls.category}
+												</span>
+											) : null}
+											<span className="text-sm text-ink">
+												{cls?.notes ||
+													(cls?.protocol
+														? `Interact with ${cls.protocol}`
+														: r.method_id
+															? `Method ${r.method_id}`
+															: "Transfer")}
+											</span>
+										</div>
+									</td>
+									<td className="px-6 py-3 text-right text-sm font-semibold tabular-nums text-ink">
+										{valueEth} ETH
+									</td>
+								</tr>
+							);
+						})}
+					</tbody>
+				</table>
+			)}
 		</div>
 	);
 }

@@ -20,20 +20,19 @@ test.describe("Shadow three-panel UI", () => {
 		await expect(page.getByRole("heading", { name: "Watchlist" })).toBeVisible();
 		await expect(page.getByRole("heading", { name: "Chat" })).toBeVisible();
 		// Dossier empty-state message (we haven't selected a wallet yet)
-		await expect(
-			page.getByText("No wallet selected"),
-		).toBeVisible();
-		// Tagline
-		await expect(
-			page.getByText("DeFi wallet research — Ethereum mainnet"),
-		).toBeVisible();
+		await expect(page.getByText("No wallet selected")).toBeVisible();
+		// Branding eyebrow lives in the sidebar in the M9.5 layout.
+		await expect(page.getByText(/DeFi Research/i).first()).toBeVisible();
 		expect(errors, `unexpected page errors: ${errors.join("\n")}`).toEqual([]);
 	});
 
 	test("rejects malformed address with inline error", async ({ page }) => {
 		await gotoApp(page);
-		await page.getByPlaceholder("0x…").fill("not-an-address");
+		// In M9.5 the Add-wallet form is collapsed behind an affordance — open it.
 		await page.getByRole("button", { name: /Add wallet/i }).click();
+		await page.getByPlaceholder("0x…").fill("not-an-address");
+		// "Add" submit (the dashed-border affordance is now hidden while the form is open).
+		await page.getByRole("button", { name: /^Add$/ }).click();
 		await expect(
 			page.getByText("address must be 0x-prefixed, 40 hex chars"),
 		).toBeVisible();
@@ -44,9 +43,10 @@ test.describe("Shadow three-panel UI", () => {
 	}) => {
 		const errors = await gotoApp(page);
 
+		await page.getByRole("button", { name: /Add wallet/i }).click();
 		await page.getByPlaceholder("0x…").fill(TEST_WALLET);
 		await page.getByPlaceholder("label (optional)").fill(TEST_LABEL);
-		await page.getByRole("button", { name: /Add wallet/i }).click();
+		await page.getByRole("button", { name: /^Add$/ }).click();
 
 		// Watchlist should now show the truncated address + label.
 		// Scope to the Watchlist <aside> — the same address also renders in the Chat header.
