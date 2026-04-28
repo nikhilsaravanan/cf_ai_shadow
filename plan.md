@@ -372,6 +372,30 @@ Scope/features come from `PRD.md` (authoritative). Build rails and conventions c
 
 ---
 
+## M9.5 — Structural port of the Figma redesign (light-theme, sidebar nav, sparklines, tabs, activities table)
+
+**Goal:** Re-do M9.4 properly. The first attempt swapped tokens but kept the prior layout, leaving the SPA "looking like the old design with colors changed." This pass actually ports the COINSPACE Figma's structural elements: full-height multi-section sidebar, top bar with breadcrumb, sparklines on stat cards, tabbed wallet hero card with chart-style breakdown, Latest Activities table, Market-Cap-style right rail with Top Protocols, Newsfeed-style chat at the bottom of the rail.
+
+**Pre-conditions:** M9.4 shipped.
+
+**Steps:**
+1. **Layout flip.** App shell goes from `[header / [sidebar | center | chat]]` to `[sidebar | (header / [center | rightRail])]`. Sidebar runs the full window height; the header sits to its right and only spans the main column.
+2. **Sidebar.** Watchlist becomes a multi-section nav (Quick Access / Watchlist / Service / Account) with a logomark + wordmark header and a `Log out` row pinned at the bottom. Watchlist rows still drive the dossier; Add wallet collapses into a dashed-border affordance that expands into the form on click.
+3. **Top bar.** Search field + breadcrumb (`Welcome > Dashboard`) + settings/notifications/avatar cluster on the right; no more brand block (now in sidebar).
+4. **Stat row.** 4 cards with `Sparkline.tsx` (deterministic-from-seed inline SVG, area-fill gradient + stroke). Layout: icon + ticker + label on the left, delta+arrow on the right, big tabular number below, sparkline at the bottom.
+5. **Wallet hero card.** Breadcrumb + full mono address + tx count + Refresh in the header; tab strip (Overview / Activity / Risk) with active gradient underline + period pills (All / 7d / 30d). Overview body: Protocol breakdown stacked bar (computed from `dossier.topProtocols`), Strategy tags, narrative (`data-testid="dossier-narrative"`).
+6. **Latest Activities card.** New component pulling `walletAgent.stub.getRecentActivity(20)` via `useEffect` keyed on `txCount` / `updatedAt`. Tab strip across categories (ALL / SWAP / LP / LENDING / TRANSFER / BRIDGE / MINT / OTHER); columns Date / Detail / Value. Detail prefers `classification.notes` → `Interact with {protocol}` → `Method {methodId}` → `Transfer`.
+7. **RightRail.** New `RightRail.tsx` renders Top Protocols (Market-Cap-style stacked list) on top + Chat at the bottom. Both subscribe to the same `useAgent` instance for the wallet — agents/react dedupes by `(type, name)`.
+8. **Verification.** `tsc --noEmit` clean, AI-independent e2e subset green, manual screenshot via Playwright matches Figma's structural beats.
+9. Append M9.5 block to `PROMPTS.md`.
+10. `git add -A && git commit -m "M9: structural port of the Figma redesign — full-height sidebar, sparkline stat cards, tabbed hero, activities table, market-cap right rail"`.
+
+**Verification:** AI-independent e2e green; before/after screenshots show the structural change, not just a recolor.
+
+**Out of scope (deferred):** Real time-series charting (Shadow has no historical metrics — sparklines are deterministic-from-seed); the decorative pyramid/illustration art from the Figma's Newsfeed cards.
+
+---
+
 ## M10 — Polish + first real deploy
 
 **Goal:** Favicon, loading states, error toasts. First real `wrangler deploy`. Scheduled refresh verified on production.
