@@ -341,6 +341,37 @@ Scope/features come from `PRD.md` (authoritative). Build rails and conventions c
 
 ---
 
+## M9.4 — Second SPA redesign (light theme, yellow + orange)
+
+**Goal:** Re-skin the SPA after a second Figma reference (`COINSPACE` crypto dashboard, `DwlwgiTrrX29mQHWxZMDiz` node `0:1`). M9.1's dark + brand-yellow palette is replaced wholesale by a light-theme card aesthetic with yellow + orange accents and Inter as the type stack. Three-panel layout (Watchlist / Dossier / Chat) is preserved.
+
+**Pre-conditions:** M9.3 shipped.
+
+**Steps:**
+1. **Tokens + fonts.** `index.css` `@theme` block flips canvas/surface to light (`#F5F6FA` page, `#FFFFFF` cards), brand to yellow (`#F5B800` family) + orange (`#F97316`), text to charcoal (`#1F2937` primary / `#6B7280` secondary). Replace Manrope with Inter via Google Fonts in `index.html`.
+2. **App shell.** Top bar: Shadow logomark + wordmark on the left, decorative search field, "N watched" pill on the right. Three-column main grid unchanged in shape (sidebar / dossier / chat).
+3. **Watchlist sidebar.** White card with section header, address-derived avatar chips (deterministic palette per address), active-row pill in yellow→orange gradient. Add-wallet form pinned at bottom.
+4. **Dossier center.**
+   - Breadcrumb above content (`Watchlist > 0xABC…123`).
+   - 4-stat row (Transactions / Synced block / Last sync / Risk flags) — colored icon chips + tabular numerics.
+   - Wallet detail card (white) — full mono address header + Refresh + period-pill placeholder; body is the narrative paragraph + strategy tags as inline yellow/orange pills + severity-tinted risk-flag rows.
+   - Two-up below: Top protocols card (Market-Cap-style stacked rows) + Top counterparties card (table-style rows).
+5. **Chat right rail.** Newsfeed-style cards: assistant messages as white cards with a yellow accent stripe; user messages right-aligned with yellow→orange gradient fill; circular orange Send button.
+6. **e2e selectors.** Update `test/e2e/shadow.spec.ts` to use `data-testid="strategy-card"` (added in this pass) instead of the old `div.bg-brand:has(h3:text-is('Strategy'))` selector. Other selectors (`dossier-narrative` testid, `li[data-role="assistant"]`, accessible-name buttons) are stable.
+7. **Verification.**
+   - `npx tsc --noEmit` clean.
+   - `npx playwright test --config=test/e2e/playwright.config.ts --grep-invert="Refresh button|chat panel"` (the four AI-independent tests) green against the new DOM.
+   - `npx wrangler deploy --dry-run` clean.
+   - Manual visual check via `wrangler dev` + Playwright screenshot.
+8. Append M9.4 block to `PROMPTS.md` (verbatim Figma URL + branding-palette prompt).
+9. `git add -A && git commit -m "M9: redesign SPA — light theme, yellow + orange, Inter (Figma round 2)"`.
+
+**Verification:** AI-independent e2e suite green; visual screenshot matches Figma's design language.
+
+**Out of scope (deferred):** Recreating the Figma's candle-chart / category-bar / sparkline visualizations — Shadow's data shape doesn't have a price time-series. Faux sparklines / category bars are decorative-only this pass.
+
+---
+
 ## M10 — Polish + first real deploy
 
 **Goal:** Favicon, loading states, error toasts. First real `wrangler deploy`. Scheduled refresh verified on production.
