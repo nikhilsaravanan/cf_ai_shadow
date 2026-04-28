@@ -315,6 +315,32 @@ Scope/features come from `PRD.md` (authoritative). Build rails and conventions c
 
 ---
 
+## M9.3 — Pin lastSyncedBlock on partial classification + smaller incremental cap
+
+**Goal:** Fix two bugs in the M9.2 incremental ingest path that surfaced under live observation while the Workers AI quota was exhausted:
+
+1. **`lastSyncedBlock` advances even when classifications failed.** A 429 outage causes every refresh to insert ~100–200 raw txs with `classification = null` and then march `lastSyncedBlock` past them. When AI comes back, those rows stay null forever — the dossier loses entire windows of on-chain history. Symptom in dev terminal: cycle after cycle of `[classify] N new txs, 0 reused from cache` with N varying by wallet activity, never converging to 0.
+2. **Catch-up burst on a hot wallet hits the daily quota in one cycle.** A wallet with 200 unsynced txs at first refresh after a quota reset triggers 20 classify batches × 4 concurrency × ~50 neurons ≈ ~4k neurons per wallet. With 3 watched wallets that's the entire 10k daily budget consumed in one minute.
+
+**Pre-conditions:** M9.2 shipped (commit `24cf524`).
+
+**Steps:**
+1. **Pin `lastSyncedBlock` on partial classification.** Workflow computes `allClassified = (cachedCount + newlyClassified) === decoded.length`. Pass through to `WalletAgent.upsertAndAggregate(txs, highestBlock, allClassified)`. The DO only advances `state.lastSyncedBlock` when `allClassified === true`; otherwise it keeps the prior value so the next refresh re-fetches the same window and retries classification. New txs are still inserted with `classification = null` (idempotent `INSERT OR REPLACE`); the `getCachedClassifications` helper already only returns rows with non-null classifications, so retries pick up automatically.
+2. **Smaller cap for incremental fetches.** In `fetchTxs.ts`, use `MAX_TXS_INCREMENTAL = 50` whenever `fromBlock > 0`. Initial sync (`fromBlock = 0`) keeps `MAX_TXS = 200`. Reduces the per-cycle catch-up burst by 4× without changing first-touch behavior.
+3. **Verification.**
+   - With `SHADOW_DEV=1` set in `.dev.vars`, scheduledRefresh is silent — confirm via dev log shows `scheduledRefresh skipped — SHADOW_DEV=1` for each wallet.
+   - With AI quota down: kick a manual Refresh; observe terminal showing 429 short-circuits and `[summarize] 0 newly classified — skipping LLM`. Click Refresh again — `lastSyncedBlock` should NOT have advanced (verify via `state.lastSyncedBlock` in UI's "synced block" stat card; should be the same value as before).
+   - With AI quota up: manual Refresh — `[classify] N new txs, …` followed by classifications succeeding, `dossier.version` bumps to ≥1. Second Refresh moments later: `[classify] all N reused from cache — skipping LLM`, `[summarize] 0 newly classified — skipping LLM`, 0 AI calls, dossier unchanged.
+   - `/shadow-check` green.
+4. Append M9.3 block to `PROMPTS.md`.
+5. `git add -A && git commit -m "M9: pin lastSyncedBlock on partial classification + cap incremental fetch at 50"`.
+
+**Verification:** `/shadow-check` green; manual idle-refresh shows `lastSyncedBlock` stable across consecutive 429-blocked refreshes.
+
+**Out of scope (deferred):** Backfilling rows that already accumulated `classification = null` during the M9.2-without-this-fix window — they'll stay null until M10's polish pass adds a "re-classify orphans" path.
+
+---
+
 ## M10 — Polish + first real deploy
 
 **Goal:** Favicon, loading states, error toasts. First real `wrangler deploy`. Scheduled refresh verified on production.
