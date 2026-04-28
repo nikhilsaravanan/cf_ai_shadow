@@ -382,6 +382,23 @@ None this milestone — pure UI/structural pass; no new LLM calls or prompt chan
 
 ---
 
+## M9.6 — Glassmorphism pass
+
+### Meta-prompts
+
+- Glassmorphism request — drove the surface treatment change (canvas → dark, cards → frosted glass, ambient color blobs, stat-card gradient bleeds). Two Figma references provided for inspiration (general glassmorphism mobile kit + glassmorphism dashboard); the dashboard ref is closer to Shadow's layout and dictated the dark + bleed-through aesthetic.
+
+  > i want to implement a glassmorphism design to the spa, especially with the cards in the dossier. use the elements from the two figma links i give you for inspiration on design for the ui. https://www.figma.com/design/dfjpw35nbwK6eV95AscNYy/%F0%9F%99%80-Glassmorphism-is-on-Figma---Community-?node-id=1-1083&t=bqm4g0uAZAhOGobm-1 https://www.figma.com/design/CeFvgu01lHA1n1anuH7sG4/Dashboard-Glassmorphism--Community-?node-id=0-1&p=f&t=b0qAmJJpzJm4KnHC-0
+
+  - Produced: tokens flipped to dark canvas + light-on-dark text. New `BackgroundBlobs` component in `App.tsx` painting 5 blurred radial gradients (yellow, orange, violet, teal, pink) as ambient lighting. New `.glass` / `.glass-soft` utility classes in `index.css` for the frosted recipe (semi-transparent fill + backdrop-blur + saturate + white-line top edge inset shadow). Stat cards restructured to a 3-layer stack: vivid color bleed → subtle frosted overlay → top-edge highlight → content on z-10. Watchlist sidebar uses a softer glass (`bg-white/[0.04]` + backdrop-blur). Chat assistant bubbles became frosted glass; user bubbles keep the yellow→orange gradient fill.
+  - Manual edits: iterated 6 screenshot-vs-Figma cycles before the bleeds read clearly — original two-radial bleed was washed out by `backdrop-blur-xl` overlay; settled on `linear-gradient + radial-gradient` combo with `backdrop-blur-md` (less aggressive) so per-card color reads through. Kept three-panel layout untouched from M9.5.
+
+### Application prompts
+
+None this milestone — pure surface-treatment pass; no new LLM calls or prompt changes.
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 

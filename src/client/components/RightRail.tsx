@@ -45,7 +45,7 @@ function ProtocolsRail({ address }: { address: string }) {
 	const total = protocols.reduce((s, p) => s + p.interactionCount, 0) || 1;
 
 	return (
-		<div className="rounded-2xl border border-edge bg-surface shadow-[0_1px_2px_rgba(17,24,39,0.04)]">
+		<div className="glass rounded-2xl">
 			<div className="flex items-center justify-between border-b border-edge px-5 py-3.5">
 				<div className="flex items-center gap-2">
 					<TrendingUp className="h-4 w-4 text-brand-2" strokeWidth={2.5} />

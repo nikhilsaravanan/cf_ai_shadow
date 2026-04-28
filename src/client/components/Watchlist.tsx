@@ -100,7 +100,7 @@ export function Watchlist({
 	};
 
 	return (
-		<aside className="flex h-full min-h-0 flex-col border-r border-edge bg-surface">
+		<aside className="flex h-full min-h-0 flex-col border-r border-edge bg-white/[0.04] backdrop-blur-xl">
 			<div className="flex items-center gap-2.5 border-b border-edge px-5 py-4">
 				<span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-brand-2 text-white shadow-sm">
 					<svg

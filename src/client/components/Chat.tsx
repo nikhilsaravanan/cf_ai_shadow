@@ -24,7 +24,7 @@ export function Chat({
 	};
 
 	return (
-		<aside className="flex h-full min-h-0 flex-col rounded-2xl border border-edge bg-surface shadow-[0_1px_2px_rgba(17,24,39,0.04)]">
+		<aside className="flex h-full min-h-0 flex-col glass rounded-2xl">
 			<div className="flex items-start justify-between border-b border-edge px-5 py-4">
 				<div className="min-w-0">
 					<p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-mute-2">
@@ -108,7 +108,7 @@ function MessageBubble({ message }: { message: UIMessage }) {
 				className={`relative max-w-[85%] space-y-1.5 rounded-2xl px-3.5 py-2.5 text-sm ${
 					isUser
 						? "bg-gradient-to-r from-brand to-brand-2 text-white shadow-sm"
-						: "border border-edge bg-surface text-ink shadow-[0_1px_2px_rgba(17,24,39,0.04)]"
+						: "glass text-ink"
 				}`}
 			>
 				{!isUser ? (

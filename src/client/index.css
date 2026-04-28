@@ -1,35 +1,81 @@
 @import "tailwindcss";
 
 @theme {
-	--color-canvas: #f4f5f8;
-	--color-surface: #ffffff;
-	--color-surface-2: #fafbfd;
-	--color-edge: #e5e7eb;
-	--color-edge-soft: #eef0f4;
+	/* Dark glass canvas */
+	--color-canvas: #0a0b14;
+	--color-canvas-2: #0e1019;
+	--color-surface: rgba(255, 255, 255, 0.06);
+	--color-surface-2: rgba(255, 255, 255, 0.04);
+	--color-edge: rgba(255, 255, 255, 0.1);
+	--color-edge-soft: rgba(255, 255, 255, 0.06);
 
-	--color-ink: #111827;
-	--color-ink-2: #374151;
-	--color-mute: #6b7280;
-	--color-mute-2: #9ca3af;
+	/* Light text on dark glass */
+	--color-ink: #f9fafb;
+	--color-ink-2: rgba(255, 255, 255, 0.78);
+	--color-mute: rgba(255, 255, 255, 0.55);
+	--color-mute-2: rgba(255, 255, 255, 0.38);
 
+	/* Brand kept from M9.5 — accents + active states */
 	--color-brand: #f5b800;
-	--color-brand-strong: #eab308;
+	--color-brand-strong: #fcd34d;
 	--color-brand-2: #f97316;
-	--color-brand-soft: #fff7e0;
+	--color-brand-soft: rgba(245, 184, 0, 0.18);
 
-	--color-up: #10b981;
-	--color-down: #ef4444;
+	/* Up/down */
+	--color-up: #34d399;
+	--color-down: #fb7185;
+
+	/* Color blob accents (used in background ambient lighting) */
+	--color-blob-yellow: #f5b800;
+	--color-blob-orange: #f97316;
+	--color-blob-violet: #8b5cf6;
+	--color-blob-teal: #14b8a6;
+	--color-blob-pink: #ec4899;
 
 	--font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
 	--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-
-	--shadow-card: 0 1px 2px rgba(17, 24, 39, 0.04),
-		0 1px 4px rgba(17, 24, 39, 0.04);
-	--shadow-card-hover: 0 4px 12px rgba(17, 24, 39, 0.08);
 }
 
 html,
 body {
 	font-family: var(--font-sans);
 	font-feature-settings: "cv11", "ss01";
+	background: var(--color-canvas);
+}
+
+/* Glass card surface — applied via .glass / .glass-strong utility classes */
+.glass {
+	background: var(--color-surface);
+	backdrop-filter: blur(20px) saturate(140%);
+	-webkit-backdrop-filter: blur(20px) saturate(140%);
+	border: 1px solid var(--color-edge);
+	box-shadow:
+		0 1px 0 0 rgba(255, 255, 255, 0.08) inset,
+		0 12px 32px -12px rgba(0, 0, 0, 0.5);
+}
+
+.glass-soft {
+	background: var(--color-surface-2);
+	backdrop-filter: blur(16px) saturate(130%);
+	-webkit-backdrop-filter: blur(16px) saturate(130%);
+	border: 1px solid var(--color-edge-soft);
+}
+
+.glass-bleed {
+	position: relative;
+	overflow: hidden;
+}
+.glass-bleed > .bleed {
+	position: absolute;
+	inset: -40% -20% auto auto;
+	height: 180%;
+	width: 70%;
+	filter: blur(60px);
+	opacity: 0.55;
+	pointer-events: none;
+	z-index: 0;
+}
+.glass-bleed > * {
+	position: relative;
+	z-index: 1;
 }

@@ -35,7 +35,7 @@ export function Dossier({
 }) {
 	if (!selected) {
 		return (
-			<section className="flex h-full min-h-0 flex-col items-center justify-center rounded-2xl border border-edge bg-surface text-sm text-mute">
+			<section className="glass flex h-full min-h-0 flex-col items-center justify-center rounded-2xl text-sm text-mute">
 				<div className="grid h-14 w-14 place-items-center rounded-full bg-brand-soft text-brand-strong">
 					<Wallet className="h-6 w-6" strokeWidth={1.8} />
 				</div>
@@ -196,41 +196,55 @@ function StatRow({
 			{cards.map((c, i) => (
 				<div
 					key={c.label}
-					className="relative overflow-hidden rounded-2xl border border-edge bg-surface shadow-[0_1px_2px_rgba(17,24,39,0.04)]"
+					className="relative overflow-hidden rounded-2xl border border-white/10 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.5)]"
 				>
-					<div className="flex items-start justify-between px-4 pt-3.5">
-						<div className="flex items-center gap-2.5">
-							<span
-								className={`grid h-9 w-9 place-items-center rounded-full ${c.tint}`}
-							>
-								<c.icon className="h-4 w-4" strokeWidth={2.2} />
-							</span>
-							<div className="leading-tight">
-								<p className="text-xs font-bold text-ink">{c.ticker}</p>
-								<p className="text-[10px] text-mute">{c.label}</p>
-							</div>
-						</div>
-						<p
-							className={`flex items-center gap-0.5 text-[10px] font-semibold ${
-								c.deltaUp ? "text-up" : "text-down"
-							}`}
-						>
-							{c.delta}
-							{c.deltaUp ? (
-								<ArrowUpRight className="h-3 w-3" strokeWidth={2.5} />
-							) : (
-								<ArrowDownRight className="h-3 w-3" strokeWidth={2.5} />
-							)}
-						</p>
-					</div>
-					<p className="mt-1 px-4 text-2xl font-bold tabular-nums text-ink">
-						{c.value}
-					</p>
-					<Sparkline
-						seed={`${seed}-${i}`}
-						color={c.color}
-						gradientId={`spark-${i}`}
+					{/* bleed — vivid color base + radial highlight */}
+					<div
+						className="absolute inset-0"
+						style={{
+							background: `linear-gradient(135deg, ${c.color}40 0%, ${c.color}20 60%, ${c.color}10 100%), radial-gradient(140% 110% at 100% 0%, ${c.color}80, transparent 70%)`,
+						}}
 					/>
+					{/* frosted overlay — backdrop blur that lets bleed show through */}
+					<div className="absolute inset-0 bg-white/[0.03] backdrop-blur-md" />
+					{/* top highlight */}
+					<div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+					{/* content */}
+					<div className="relative z-10">
+						<div className="flex items-start justify-between px-4 pt-3.5">
+							<div className="flex items-center gap-2.5">
+								<span
+									className={`grid h-9 w-9 place-items-center rounded-full ${c.tint}`}
+								>
+									<c.icon className="h-4 w-4" strokeWidth={2.2} />
+								</span>
+								<div className="leading-tight">
+									<p className="text-xs font-bold text-ink">{c.ticker}</p>
+									<p className="text-[10px] text-mute">{c.label}</p>
+								</div>
+							</div>
+							<p
+								className={`flex items-center gap-0.5 text-[10px] font-semibold ${
+									c.deltaUp ? "text-up" : "text-down"
+								}`}
+							>
+								{c.delta}
+								{c.deltaUp ? (
+									<ArrowUpRight className="h-3 w-3" strokeWidth={2.5} />
+								) : (
+									<ArrowDownRight className="h-3 w-3" strokeWidth={2.5} />
+								)}
+							</p>
+						</div>
+						<p className="mt-1 px-4 text-2xl font-bold tabular-nums text-ink">
+							{c.value}
+						</p>
+						<Sparkline
+							seed={`${seed}-${i}`}
+							color={c.color}
+							gradientId={`spark-${i}`}
+						/>
+					</div>
 				</div>
 			))}
 		</div>
@@ -262,7 +276,7 @@ function HeroCard({
 		{ id: "risk", label: "Risk" },
 	];
 	return (
-		<div className="rounded-2xl border border-edge bg-surface shadow-[0_1px_2px_rgba(17,24,39,0.04)]">
+		<div className="glass rounded-2xl">
 			<div className="flex items-start justify-between gap-4 px-6 pt-5 pb-3">
 				<div className="min-w-0">
 					<div className="flex items-center gap-2 text-xs text-mute">
@@ -523,7 +537,7 @@ function LatestActivitiesCard({ rows }: { rows: TransactionRow[] }) {
 		}
 	});
 	return (
-		<div className="rounded-2xl border border-edge bg-surface shadow-[0_1px_2px_rgba(17,24,39,0.04)]">
+		<div className="glass rounded-2xl">
 			<div className="flex items-center justify-between border-b border-edge px-6 py-3.5">
 				<h3 className="text-sm font-bold text-ink">Latest Activities</h3>
 				<span className="text-[11px] text-mute">{rows.length} loaded</span>
