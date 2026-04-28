@@ -393,6 +393,12 @@ None this milestone — pure UI/structural pass; no new LLM calls or prompt chan
   - Produced: tokens flipped to dark canvas + light-on-dark text. New `BackgroundBlobs` component in `App.tsx` painting 5 blurred radial gradients (yellow, orange, violet, teal, pink) as ambient lighting. New `.glass` / `.glass-soft` utility classes in `index.css` for the frosted recipe (semi-transparent fill + backdrop-blur + saturate + white-line top edge inset shadow). Stat cards restructured to a 3-layer stack: vivid color bleed → subtle frosted overlay → top-edge highlight → content on z-10. Watchlist sidebar uses a softer glass (`bg-white/[0.04]` + backdrop-blur). Chat assistant bubbles became frosted glass; user bubbles keep the yellow→orange gradient fill.
   - Manual edits: iterated 6 screenshot-vs-Figma cycles before the bleeds read clearly — original two-radial bleed was washed out by `backdrop-blur-xl` overlay; settled on `linear-gradient + radial-gradient` combo with `backdrop-blur-md` (less aggressive) so per-card color reads through. Kept three-panel layout untouched from M9.5.
 
+- Follow-up correction (v2 iteration of the same pass) — initial M9.6 still felt "solid" and the brand gradients on buttons/chat were too prominent for a glass aesthetic:
+
+  > the cards still look solid, make them more like the cards in the figma template, and change the buttons and chats from gradient as well. https://www.figma.com/design/7vOVMqiFuSvmP6ArKxhr98/Dashboard-Glassmorphism--Community-?node-id=0-1&t=qsMCQqDVtdMgoZRt-1
+
+  - Produced: bleed gradient bumped from `linear+radial` to `radial-gradient(circle at varied origin, color-cc 0%, color-66 25%, color-22 50%, transparent 80%)` so each card's bleed covers more area and per-card origin varies (bottom-left / top-right / top-left / bottom-right) for visual rhythm. All `bg-gradient-to-r/br from-brand to-brand-2` brand gradients across App, Watchlist, Dossier, Chat (avatar, logomark, active sidebar items, Add submit, Refresh button, tab underlines, strategy tag pills, Send button, user-bubble fill, assistant-bubble accent stripe) replaced with glass chips: `border border-white/20 bg-white/10 backdrop-blur-md` for neutral, `border border-brand/30 bg-brand/15 backdrop-blur-md` for brand-tinted. Only the white-line top-edge highlight on stat cards retains a `gradient-to-r from-transparent via-white/30 to-transparent` (it's the glass shine, not a brand gradient).
+
 ### Application prompts
 
 None this milestone — pure surface-treatment pass; no new LLM calls or prompt changes.

@@ -191,22 +191,30 @@ function StatRow({
 			color: riskCount > 0 ? "#ef4444" : "#a78bfa",
 		},
 	];
+	// Vary the bleed origin per card so the four cards look distinct (matches
+	// Figma's "different glow per card" treatment instead of all-same).
+	const bleedOrigins = [
+		"30% 80%",
+		"75% 30%",
+		"20% 30%",
+		"80% 75%",
+	];
 	return (
 		<div className="grid grid-cols-4 gap-3">
 			{cards.map((c, i) => (
 				<div
 					key={c.label}
-					className="relative overflow-hidden rounded-2xl border border-white/10 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.5)]"
+					className="relative overflow-hidden rounded-2xl border border-white/15 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.55)]"
 				>
-					{/* bleed — vivid color base + radial highlight */}
+					{/* bleed — saturated colored "lit-from-behind" wash */}
 					<div
 						className="absolute inset-0"
 						style={{
-							background: `linear-gradient(135deg, ${c.color}40 0%, ${c.color}20 60%, ${c.color}10 100%), radial-gradient(140% 110% at 100% 0%, ${c.color}80, transparent 70%)`,
+							background: `radial-gradient(circle at ${bleedOrigins[i % 4]}, ${c.color}cc 0%, ${c.color}66 25%, ${c.color}22 50%, transparent 80%), linear-gradient(135deg, ${c.color}1a, transparent 70%)`,
 						}}
 					/>
-					{/* frosted overlay — backdrop blur that lets bleed show through */}
-					<div className="absolute inset-0 bg-white/[0.03] backdrop-blur-md" />
+					{/* frosted overlay — soft, lets the bleed read through */}
+					<div className="absolute inset-0 bg-white/[0.02] backdrop-blur-[8px]" />
 					{/* top highlight */}
 					<div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
 					{/* content */}
@@ -303,7 +311,7 @@ function HeroCard({
 					<button
 						type="button"
 						onClick={onRefresh}
-						className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-brand to-brand-2 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-105"
+						className="flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-ink backdrop-blur-md transition hover:border-brand/40 hover:bg-white/15 hover:text-brand-strong"
 					>
 						<RefreshCw className="h-3.5 w-3.5" strokeWidth={2.5} />
 						Refresh
@@ -325,7 +333,7 @@ function HeroCard({
 						>
 							{t.label}
 							{active ? (
-								<span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-gradient-to-r from-brand to-brand-2" />
+								<span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-brand" />
 							) : null}
 						</button>
 					);
@@ -449,7 +457,7 @@ function StrategyTags({ tags }: { tags: string[] }) {
 					{tags.map((t) => (
 						<li
 							key={t}
-							className="rounded-full bg-gradient-to-r from-brand/15 to-brand-2/15 px-3 py-1 text-xs font-semibold text-brand-strong ring-1 ring-brand/25"
+							className="rounded-full border border-brand/30 bg-brand/15 px-3 py-1 text-xs font-semibold text-brand-strong backdrop-blur-md"
 						>
 							{t}
 						</li>
@@ -556,7 +564,7 @@ function LatestActivitiesCard({ rows }: { rows: TransactionRow[] }) {
 						>
 							{c}
 							{active ? (
-								<span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-gradient-to-r from-brand to-brand-2" />
+								<span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-brand" />
 							) : null}
 						</button>
 					);

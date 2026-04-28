@@ -66,7 +66,7 @@ export function App() {
 									</span>
 								) : null}
 							</button>
-							<div className="ml-2 grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-brand to-brand-2 text-xs font-bold text-canvas">
+							<div className="ml-2 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-white/10 text-xs font-bold text-brand-strong backdrop-blur-md">
 								S
 							</div>
 						</div>

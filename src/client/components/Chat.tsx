@@ -81,7 +81,7 @@ export function Chat({
 						type="submit"
 						disabled={chat.isStreaming || !input.trim()}
 						aria-label="Send"
-						className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-r from-brand to-brand-2 text-white shadow-sm transition hover:brightness-105 disabled:opacity-40"
+						className="grid h-8 w-8 place-items-center rounded-full border border-brand/40 bg-brand/20 text-brand-strong backdrop-blur-md transition hover:bg-brand/30 disabled:opacity-40"
 					>
 						<ArrowUp className="h-4 w-4" strokeWidth={3} />
 					</button>
@@ -107,12 +107,12 @@ function MessageBubble({ message }: { message: UIMessage }) {
 			<div
 				className={`relative max-w-[85%] space-y-1.5 rounded-2xl px-3.5 py-2.5 text-sm ${
 					isUser
-						? "bg-gradient-to-r from-brand to-brand-2 text-white shadow-sm"
+						? "border border-brand/30 bg-brand/15 text-ink backdrop-blur-md"
 						: "glass text-ink"
 				}`}
 			>
 				{!isUser ? (
-					<span className="absolute -left-px top-3 h-5 w-1 rounded-r bg-gradient-to-b from-brand to-brand-2" />
+					<span className="absolute -left-px top-3 h-5 w-1 rounded-r bg-brand" />
 				) : null}
 				{message.parts.map((part, i) => {
 					if (part.type === "text") {
