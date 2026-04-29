@@ -196,29 +196,20 @@ function StatRow({
 			{cards.map((c, i) => (
 				<div
 					key={c.label}
-					className="relative overflow-hidden rounded-2xl border border-white/15 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.55)]"
+					className="relative overflow-hidden rounded-2xl border border-white/10 shadow-[0_8px_24px_-10px_rgba(0,0,0,0.45)]"
 				>
-					{/* glass reflecting the sparkline below — light rises from the
-					    bottom of the card where the sparkline sits and fades up,
-					    making the chart itself look like the light source */}
+					{/* flat figma-style diagonal gradient — color saturates upper
+					    band, fades through mid, dies into near-canvas at bottom */}
 					<div
 						className="absolute inset-0"
 						style={{
-							background: `linear-gradient(to top, ${c.color}b3 0%, ${c.color}55 22%, ${c.color}22 45%, transparent 75%)`,
+							background: `linear-gradient(160deg, ${c.color}99 0%, ${c.color}55 38%, ${c.color}1a 80%, transparent 100%)`,
 						}}
 					/>
-					{/* widened glow at the very bottom edge — anchors the light
-					    source visually right where the sparkline path lives */}
-					<div
-						className="absolute inset-x-0 bottom-0 h-20"
-						style={{
-							background: `radial-gradient(120% 100% at 50% 100%, ${c.color}99 0%, transparent 70%)`,
-						}}
-					/>
-					{/* frosted overlay — soft, lets the bleed read through */}
-					<div className="absolute inset-0 bg-white/[0.02] backdrop-blur-[8px]" />
-					{/* top highlight */}
-					<div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+					{/* subtle bottom darken for depth */}
+					<div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/30" />
+					{/* hairline top highlight, faint */}
+					<div className="absolute inset-x-0 top-0 h-px bg-white/10" />
 					{/* content */}
 					<div className="relative z-10">
 						<div className="flex items-start justify-between px-4 pt-3.5">

@@ -421,6 +421,33 @@ Scope/features come from `PRD.md` (authoritative). Build rails and conventions c
 
 ---
 
+## M9.7 — Chat model swap (Workers AI Llama 3.3 → Gemini 2.5 Flash via `@ai-sdk/google`)
+
+**Goal:** Move the chat path off Workers AI's free-tier neuron quota by using Gemini 2.5 Flash (external) for chat narration + tool calling, while ingestion stays on Workers AI Llama 3.1 8B. The assignment instructions explicitly allow "an external LLM of your choice" — splitting workloads protects the bounded ingestion side and removes the only piece of the app that's been quota-blocked.
+
+**Pre-conditions:** M9.6 shipped. AI binding already removed from `wrangler.jsonc` earlier today (the remote-preview fix). User has a Gemini API key from https://aistudio.google.com/apikey.
+
+**Why outside the original plan:** The 70B-fp8-fast chat model burned ~500–1000 neurons per turn × 2 calls (routing + narration) = 1–2k neurons per chat turn. With 10k/day free, a few chat turns plus normal scheduled refreshes drained the daily allocation in dev. Quality target was the M8-era narration ("vitalik wallet uses Curve / Aave V3 lender / Uniswap V3...") which Gemini 2.5 Flash matches. Side benefit: Gemini's provider handles AI SDK tool calls natively, so the manual `/ai/run` routing hack from earlier today gets reverted to the cleaner M8-style code.
+
+**Steps:**
+1. `npm install @ai-sdk/google` (adds the Vercel AI SDK Google provider).
+2. Add `GOOGLE_GENERATIVE_AI_API_KEY` to `.dev.vars` (user-supplied). Re-run `npx wrangler types` so `Env` picks it up. For prod (M10), `npx wrangler secret put GOOGLE_GENERATIVE_AI_API_KEY`.
+3. Refactor `src/server.ts` `onChatMessage`:
+   - Drop `import { createWorkersAI } from "workers-ai-provider"`.
+   - Add `import { createGoogleGenerativeAI } from "@ai-sdk/google"`, restore `tool` + `stepCountIs` from `ai`, restore `z` from `zod`.
+   - Rename `MODEL` → `CHAT_MODEL = "gemini-2.5-flash"`.
+   - Replace the `traditionalTools` array + `executeTool` switch + manual `/ai/run` routing fetch with three proper `tool({ description, inputSchema, execute })` definitions and a single `streamText({ model: google(CHAT_MODEL), system, messages, tools, stopWhen: stepCountIs(5) })`. Tool bodies reuse the existing `walletStub` helper.
+4. Update `CLAUDE.md` "Stack" section to split **Chat LLM** (Gemini 2.5 Flash) from **Ingestion LLM** (Workers AI Llama 3.1 8B). Strike the AI binding from the bindings list (already removed from `wrangler.jsonc`); add `GOOGLE_GENERATIVE_AI_API_KEY` to the secrets list.
+5. Append M9.7 block to `PROMPTS.md` with the verbatim user prompts that drove this milestone (the "can we use a different model for chat..." → "i want the chat quality to match..." → "the instructions read..." exchange). No new application prompts this milestone — the chat system prompt is unchanged from M8.
+6. Verification: `tsc --noEmit` clean; `npm run dev` boots without remote-preview errors; Playwright drives chat with `list my watchlist` (expect `listWatched` tool call + real watchlist) and `summarize the vitalik wallet (0xd8da…)` (expect `queryWallet` tool call + dossier-grounded narration matching M8 quality); confirm `Chat.tsx`'s collapsible `ToolCard` components render again (they regressed under the manual routing path); confirm Workers AI ingestion still fires by clicking Refresh and watching `[classify]` / `[summarize]` lines in the dev terminal.
+7. `git add -A && git commit -m "M9: swap chat to Gemini 2.5 Flash (@ai-sdk/google), keep ingestion on Workers AI"`.
+
+**Verification:** AI-independent e2e green; chat tools fire end-to-end with grounded responses; ingestion unaffected; `/shadow-check` passes.
+
+**Out of scope (deferred):** Production secret setup (handled in M10); cost dashboard / token budget guard (Gemini free tier is generous enough for the demo); switching ingestion to Gemini too (intentionally not — keeps the "Cloudflare-native LLM" half of the demo story intact).
+
+---
+
 ## M10 — Polish + first real deploy
 
 **Goal:** Favicon, loading states, error toasts. First real `wrangler deploy`. Scheduled refresh verified on production.

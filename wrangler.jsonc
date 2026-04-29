@@ -14,9 +14,6 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
-	"ai": {
-		"binding": "AI"
-	},
 	"assets": {
 		"directory": "./dist/client",
 		"binding": "ASSETS",

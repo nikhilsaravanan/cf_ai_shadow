@@ -411,6 +411,26 @@ None this milestone — pure surface-treatment pass; no new LLM calls or prompt 
 
 ---
 
+## M9.7 — Chat model swap (Workers AI Llama 3.3 → Gemini 2.5 Flash via `@ai-sdk/google`)
+
+### Meta-prompts
+
+- `can we use a different model for chat and keep the same app functionality`
+  - Produced: opened the discussion of where the chat path could move; surfaced the constraint that the original CLAUDE.md pin to `@cf/meta/llama-3.3-70b-instruct-fp8-fast` was costing ~1–2k neurons per chat turn against a 10k/day free quota.
+  - Manual edits: none.
+- `i want the chat quality to match what we saw today, and i think ingestion can stay on the current model as its working fine. for chat, however, do you think it would be beneficial to use an external model outside of workers ai?`
+  - Produced: locked the quality target to the M8 narration pattern ("vitalik uses Curve / Aave V3 lender / Uniswap V3..."), confirmed ingestion stays on Workers AI Llama 3.1 8B, opened the external-LLM question.
+  - Manual edits: none.
+- `the instructions read  LLM (recommend using Llama 3.3 on Workers AI), or an external LLM of your choice", so i think we're fine to use an external model as well. would you say gemini or mistral would be a good choice? the reason i think an external llm would be better is to bypass the 10k neurons limit for chat, and keep the limit focused on ingestion for the app, as chat takes up more tokens`
+  - Produced: confirmed the assignment allows external LLM; locked the workload split (chat → external, ingestion → Workers AI); narrowed model choice to Gemini vs Mistral. Final pick: `gemini-2.5-flash` via `@ai-sdk/google` (chosen for free-tier generosity, tool-calling reliability, and JS SDK polish).
+  - Manual edits: none.
+
+### Application prompts
+
+None this milestone — chat system prompt (`SHADOW_SYSTEM_PROMPT` in `src/server.ts`) is unchanged from M8 and already logged. The model + provider changed; the prompt did not.
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 

@@ -22,7 +22,7 @@ export function App() {
 		<div className="relative h-full overflow-hidden">
 			<BackgroundBlobs />
 
-			<div className="relative grid h-full grid-cols-[260px_1fr]">
+			<div className="relative grid h-full grid-cols-[260px_minmax(0,1fr)]">
 				<Watchlist
 					agent={agent}
 					state={state}
@@ -72,7 +72,7 @@ export function App() {
 						</div>
 					</header>
 
-					<main className="grid min-h-0 grid-cols-[1fr_360px] gap-4 overflow-hidden p-4">
+					<main className="grid min-h-0 grid-cols-[minmax(0,1fr)_360px] gap-4 overflow-hidden p-4">
 						<Dossier agent={agent} selected={selected} />
 						<RightRail agent={agent} selected={selected} />
 					</main>
@@ -89,49 +89,22 @@ function BackgroundBlobs() {
 			aria-hidden="true"
 		>
 			<div className="absolute inset-0 bg-canvas" />
-			{/* yellow blob — top left */}
+			{/* very faint violet wash — top right */}
 			<div
-				className="absolute -left-32 -top-32 h-[520px] w-[520px] rounded-full opacity-90"
+				className="absolute -right-40 -top-40 h-[600px] w-[600px] rounded-full opacity-15"
 				style={{
 					background:
-						"radial-gradient(circle, var(--color-blob-yellow) 0%, transparent 60%)",
-					filter: "blur(80px)",
-				}}
-			/>
-			{/* orange blob — top right */}
-			<div
-				className="absolute -right-40 top-10 h-[560px] w-[560px] rounded-full opacity-80"
-				style={{
-					background:
-						"radial-gradient(circle, var(--color-blob-orange) 0%, transparent 60%)",
-					filter: "blur(90px)",
-				}}
-			/>
-			{/* violet blob — bottom left */}
-			<div
-				className="absolute -bottom-40 left-1/4 h-[640px] w-[640px] rounded-full opacity-75"
-				style={{
-					background:
-						"radial-gradient(circle, var(--color-blob-violet) 0%, transparent 60%)",
+						"radial-gradient(circle, var(--color-blob-violet) 0%, transparent 65%)",
 					filter: "blur(100px)",
 				}}
 			/>
-			{/* teal blob — bottom right */}
+			{/* very faint teal wash — bottom left */}
 			<div
-				className="absolute -bottom-32 -right-20 h-[480px] w-[480px] rounded-full opacity-70"
+				className="absolute -bottom-40 -left-32 h-[580px] w-[580px] rounded-full opacity-12"
 				style={{
 					background:
-						"radial-gradient(circle, var(--color-blob-teal) 0%, transparent 60%)",
-					filter: "blur(80px)",
-				}}
-			/>
-			{/* pink blob — center, faint */}
-			<div
-				className="absolute left-1/2 top-1/3 h-[420px] w-[420px] -translate-x-1/2 rounded-full opacity-50"
-				style={{
-					background:
-						"radial-gradient(circle, var(--color-blob-pink) 0%, transparent 60%)",
-					filter: "blur(70px)",
+						"radial-gradient(circle, var(--color-blob-teal) 0%, transparent 65%)",
+					filter: "blur(100px)",
 				}}
 			/>
 		</div>

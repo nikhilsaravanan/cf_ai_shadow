@@ -24,7 +24,7 @@ export function Chat({
 	};
 
 	return (
-		<aside className="flex h-full min-h-0 flex-col glass rounded-2xl">
+		<aside className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden glass rounded-2xl">
 			<div className="flex items-start justify-between border-b border-edge px-5 py-4">
 				<div className="min-w-0">
 					<p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-mute-2">
@@ -46,7 +46,7 @@ export function Chat({
 				</div>
 			</div>
 
-			<ul className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
+			<ul className="min-h-0 min-w-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-4 py-4">
 				{chat.messages.length === 0 ? (
 					<li className="rounded-xl border border-dashed border-edge bg-surface-2 px-3 py-3 text-xs text-mute">
 						<div className="mb-1 flex items-center gap-1.5 text-ink">
@@ -102,10 +102,10 @@ function MessageBubble({ message }: { message: UIMessage }) {
 	return (
 		<li
 			data-role={message.role}
-			className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+			className={`flex min-w-0 ${isUser ? "justify-end" : "justify-start"}`}
 		>
 			<div
-				className={`relative max-w-[85%] space-y-1.5 rounded-2xl px-3.5 py-2.5 text-sm ${
+				className={`relative min-w-0 max-w-[85%] space-y-1.5 rounded-2xl px-3.5 py-2.5 text-sm ${
 					isUser
 						? "bg-gradient-to-r from-brand to-brand-2 text-white shadow-sm"
 						: "glass text-ink"
@@ -117,7 +117,10 @@ function MessageBubble({ message }: { message: UIMessage }) {
 				{message.parts.map((part, i) => {
 					if (part.type === "text") {
 						return (
-							<p key={i} className="whitespace-pre-wrap leading-relaxed">
+							<p
+								key={i}
+								className="whitespace-pre-wrap break-words leading-relaxed"
+							>
 								{String(part.text ?? "")}
 							</p>
 						);

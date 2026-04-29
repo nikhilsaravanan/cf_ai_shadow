@@ -14,12 +14,14 @@ The installed scaffold is the bare "Hello World" Workers starter (`npm create cl
 
 ## Stack — pin these, do not drift
 
-- **LLM:** Workers AI, model ID `@cf/meta/llama-3.3-70b-instruct-fp8-fast`. Called via the `ai` SDK `streamText({ model: createWorkersAI({ binding: this.env.AI })("..."), ... })`, not `env.AI.run()` directly. Structured-output prompting for tx classification.
+- **Chat LLM (external):** Gemini 2.5 Flash via `@ai-sdk/google` (`createGoogleGenerativeAI`). The assignment instructions allow either Llama 3.3 on Workers AI or "an external LLM of your choice" — chat is split off external (per M9.7) so the Workers AI free-tier 10k-neuron daily quota is reserved for ingestion. Tool calling uses the AI SDK's standard `tool({ inputSchema: zod, execute })` shape with `streamText({ tools, stopWhen: stepCountIs(5) })`.
+- **Ingestion LLM:** Workers AI, model ID `@cf/meta/llama-3.1-8b-instruct` (used in `classifyTxs.ts` and `summarizeDossier.ts`). Called via direct `fetch()` to `/ai/run/<model>` with `Authorization: Bearer ${WORKERS_AI_API_TOKEN}` (the M4 deviation — miniflare's AI binding errors out, so REST instead). JSON-mode prompting for classification.
 - **Agents SDK packages:**
   - `agents` — `Agent`, `routeAgentRequest`; `useAgent` from `agents/react`.
   - `@cloudflare/ai-chat` — `AIChatAgent`; `useAgentChat` from `@cloudflare/ai-chat/react`. **Not** from `agents/react` — that's stale.
   - `ai` — `streamText`, `convertToModelMessages`, `tool`, `stepCountIs`, `createUIMessageStream`, `createUIMessageStreamResponse`, `pruneMessages`.
-  - `workers-ai-provider` — `createWorkersAI`.
+  - `@ai-sdk/google` — `createGoogleGenerativeAI` (chat path only).
+  - `workers-ai-provider` — installed for fallback / future use; not currently in the chat path.
   - `zod` — tool input schemas.
   - `ResearcherAgent extends AIChatAgent`, `WalletAgent extends Agent`. `IngestWorkflow` extends Cloudflare Workflows' base class — confirm `WorkflowEntrypoint` (from `cloudflare:workers`) vs any Agents-SDK shorthand via the `cloudflare-docs` MCP at M6 before writing code. PRD's "AgentWorkflow" term is shorthand for the same concept.
 - **Frontend:** React 19 + Vite + Tailwind, served by the **same Worker via an `assets` binding** (not a separate Cloudflare Pages project). `use_agent` for synced state, `useAgentChat` for streamed chat.
@@ -61,16 +63,18 @@ Re-check both rules any time you edit `tsconfig.json`.
 
 Convention: DO / Workflow binding `name` matches its `class_name` so `routeAgentRequest` can kebab-match URLs (`WalletAgent` → `/agents/wallet-agent/…`). Non-agent resources (KV, AI) stay uppercase.
 
-- `AI` — Workers AI
+- ~~`AI`~~ — removed in M9.7. Ingestion calls Workers AI via REST (token-auth), chat calls Gemini via `@ai-sdk/google`. Neither needs the binding, and keeping it triggered a remote-preview hop that the inference-only API token couldn't authorize.
 - `ChatAgent` — Durable Object binding → `ChatAgent` class. Renamed to `ResearcherAgent` in M8 via a `renamed_classes` migration (class + binding rename together).
 - `WalletAgent` — Durable Object binding → `WalletAgent` class
 - `IngestWorkflow` — Workflow binding → `IngestWorkflow` class
 - `ABI_CACHE` — KV namespace for Etherscan ABI cache
 
-Secrets (via `wrangler secret put`):
+Secrets (via `wrangler secret put` for prod; `.dev.vars` for local):
 
 - `ALCHEMY_API_KEY`
 - `ETHERSCAN_API_KEY`
+- `WORKERS_AI_API_TOKEN` — for ingestion REST calls (`/ai/run/<model>`)
+- `GOOGLE_GENERATIVE_AI_API_KEY` — for chat (Gemini 2.5 Flash via `@ai-sdk/google`). Get from https://aistudio.google.com/apikey.
 
 ## Durable Object naming — load-bearing
 

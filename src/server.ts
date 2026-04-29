@@ -1,6 +1,6 @@
 import { AIChatAgent } from "@cloudflare/ai-chat";
 import { callable, routeAgentRequest } from "agents";
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { streamText, convertToModelMessages, tool, stepCountIs } from "ai";
 import { z } from "zod";
 import type { Dossier, TransactionRow } from "./walletAgent";
@@ -8,7 +8,9 @@ import type { Dossier, TransactionRow } from "./walletAgent";
 export { WalletAgent } from "./walletAgent";
 export { IngestWorkflow } from "./ingest/workflow";
 
-const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+// Chat path runs on Gemini (external) so the Workers AI 10k-neuron daily
+// quota is reserved for ingestion (classify + summarize). See plan.md M9.7.
+const CHAT_MODEL = "gemini-2.5-flash";
 
 const SHADOW_SYSTEM_PROMPT = `You are Shadow, an AI research assistant that helps users understand DeFi wallets on Ethereum mainnet.
 
@@ -90,14 +92,12 @@ export class ResearcherAgent extends AIChatAgent<Env, ResearcherState> {
 	}
 
 	async onChatMessage() {
-		const workersAi = createOpenAICompatible({
-			name: "workers-ai",
-			apiKey: this.env.WORKERS_AI_API_TOKEN,
-			baseURL: `https://api.cloudflare.com/client/v4/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/ai/v1`,
-		});
-
 		const env = this.env;
 		const state = this.state;
+
+		const google = createGoogleGenerativeAI({
+			apiKey: env.GOOGLE_GENERATIVE_AI_API_KEY,
+		});
 
 		const queryWallet = tool({
 			description:
@@ -127,7 +127,9 @@ export class ResearcherAgent extends AIChatAgent<Env, ResearcherState> {
 						to: r.to_address,
 						value_wei: r.value_wei,
 						method_id: r.method_id,
-						classification: r.classification ? JSON.parse(r.classification) : null,
+						classification: r.classification
+							? JSON.parse(r.classification)
+							: null,
 					})),
 				};
 			},
@@ -148,7 +150,10 @@ export class ResearcherAgent extends AIChatAgent<Env, ResearcherState> {
 					walletStub(env, a),
 					walletStub(env, b),
 				]);
-				const [da, db] = await Promise.all([stubA.getDossier(), stubB.getDossier()]);
+				const [da, db] = await Promise.all([
+					stubA.getDossier(),
+					stubB.getDossier(),
+				]);
 				return { a: da, b: db };
 			},
 		});
@@ -181,7 +186,7 @@ export class ResearcherAgent extends AIChatAgent<Env, ResearcherState> {
 		});
 
 		const result = streamText({
-			model: workersAi(MODEL),
+			model: google(CHAT_MODEL),
 			system: SHADOW_SYSTEM_PROMPT,
 			messages: await convertToModelMessages(this.messages),
 			tools: { queryWallet, compareWallets, listWatched },

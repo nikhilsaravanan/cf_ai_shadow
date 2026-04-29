@@ -29,7 +29,7 @@ export function RightRail({
 	selected: string | null;
 }) {
 	return (
-		<div className="grid h-full min-h-0 grid-rows-[auto_1fr] gap-4">
+		<div className="grid h-full min-h-0 min-w-0 grid-rows-[auto_1fr] gap-4 overflow-hidden">
 			{selected ? <ProtocolsRail address={selected} /> : null}
 			<Chat agent={agent} selected={selected} />
 		</div>

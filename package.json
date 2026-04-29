@@ -28,6 +28,7 @@
     "wrangler": "^4.84.1"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.65",
     "@ai-sdk/openai-compatible": "^2.0.41",
     "@cloudflare/ai-chat": "^0.5.1",
     "agents": "^0.11.5",
