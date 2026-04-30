@@ -2,8 +2,6 @@
 
 > An AI research agent that tails DeFi wallets on Ethereum mainnet, builds a persistent dossier per wallet via the Cloudflare Agents SDK, and lets you chat with it over WebSocket.
 
-Submission for the Cloudflare 2026 internship assignment (AI-powered application).
-
 ---
 
 ## What it does
