@@ -451,6 +451,18 @@ None this milestone — polish was UI/infra-only (favicon, Toast component + pro
 
 ---
 
+## M11 — README + PROMPTS finalization
+
+### Meta-prompts
+
+None this milestone beyond the M10 authorization above — README finalization (live URL pasted in, screenshot from `docs/shadow-prod.png`), PROMPTS scrub (this file), and the `git push` to `origin/main` were executed off the same `b for q1 and yes git push on your own for q2` authorization.
+
+### Application prompts
+
+None this milestone — purely documentation work; no LLM-facing prompts changed.
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 

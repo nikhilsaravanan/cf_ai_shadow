@@ -12,11 +12,15 @@ A single chat agent (`ResearcherAgent`, an `AIChatAgent`) sits in front of the p
 
 ## Screenshot
 
-`<TODO: gif/screenshot lands at M10 polish pass>`
+![Shadow — production dossier view](docs/shadow-prod.png)
+
+*Vitalik's wallet, 200 txs ingested, classified, and summarized in ~60 seconds against the live deploy.*
 
 ## Live deploy
 
-`<TODO: production URL lands at M10 first-real-deploy>`
+**[https://cf_ai_shadow.nikhilsaravanan8.workers.dev](https://cf_ai_shadow.nikhilsaravanan8.workers.dev)**
+
+Single Worker (with `assets` binding serving the React build) — no separate Pages project. The DOs, Workflow, KV namespace, and scheduled cron all run in the same Worker.
 
 ## Assignment requirement → Shadow component
 
@@ -114,8 +118,6 @@ In the UI: paste a wallet (e.g. Vitalik's `0xd8dA6BF26964aF9D7eEd9e03E53415D37aA
 First-touch ingestion takes ~15s on a busy wallet (200 txs, ABI lookups, classification batches). Subsequent refreshes are incremental — only new blocks are fetched, and already-classified txs are reused from SQLite.
 
 ## Deploy
-
-> First production deploy lands at M10. Once done, the URL above will be live.
 
 ```bash
 # one-time setup of prod secrets (requires a Cloudflare account)
