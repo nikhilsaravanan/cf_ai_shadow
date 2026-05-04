@@ -4,7 +4,7 @@
 > **One-liner:** A Cloudflare-native AI research agent that tails DeFi wallets, builds a living "dossier" per wallet, and lets you chat with it over WebSocket.
 > **Owner:** Nikhil (ns36686@my.utexas.edu)
 > **Target:** Cloudflare 2026 internship assignment — AI-powered application
-> **Stack:** Workers AI (Llama 3.3) · Cloudflare Agents SDK · Durable Objects · Workflows · Pages (React) · WebSockets
+> **Stack:** Workers AI (Llama 3.1 8B for ingestion) · Gemini 2.5 Flash (chat, via `@ai-sdk/google`) · Cloudflare Agents SDK · Durable Objects · Workflows · single Worker + `assets` binding (React) · WebSockets
 
 ---
 
@@ -36,7 +36,7 @@ The user is a builder/researcher — someone comfortable pasting hex addresses, 
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                   Cloudflare Pages (React + Vite)                │
+│        Single Worker + `assets` binding (React + Vite)           │
 │        useAgentChat() ── WebSocket ──▶                           │
 └───────────────────────────────┬─────────────────────────────────┘
                                 │
@@ -116,7 +116,7 @@ Triggered by a WalletAgent on first-touch and on schedule. Steps:
 
 Because it's an `AgentWorkflow`, a reboot mid-ingest resumes from the last successful step. That durability guarantee is a core selling point of the Cloudflare stack and should be mentioned in the README.
 
-### 6.4 React frontend (Cloudflare Pages)
+### 6.4 React frontend (single Worker + `assets` binding)
 
 Single-page app, Vite + React 19 + Tailwind. Three panels:
 
@@ -141,7 +141,7 @@ This is the table that goes in the README so a reviewer can check off the assign
 |---|---|
 | **LLM** | Workers AI, model `@cf/meta/llama-3.3-70b-instruct-fp8-fast`, called via `env.AI.run(...)` for both tx classification and chat |
 | **Workflow / coordination** | `ResearcherAgent` and `WalletAgent` are Durable Objects (Agents SDK). `IngestWorkflow` is a Cloudflare Workflow (via `AgentWorkflow`) for durable, resumable tx ingestion |
-| **User input via chat or voice** | React frontend on Cloudflare Pages, chat over WebSocket via `useAgentChat()` |
+| **User input via chat or voice** | React frontend served by the same Worker via an `assets` binding (no separate Pages project), chat over WebSocket via `useAgentChat()` |
 | **Memory / state** | Per-wallet SQLite inside each `WalletAgent` DO (txs, counterparties) + synced KV state (dossier) + `AIChatAgent`'s persisted message history on the `ResearcherAgent` |
 
 ## 8. Tech choices (pin these to avoid drift during build)
@@ -150,7 +150,7 @@ This is the table that goes in the README so a reviewer can check off the assign
 - **Agents SDK:** `npm i agents` (latest). Extend `AIChatAgent` and `Agent`. Use TC39 decorators — set `"target": "ES2022"` or `"ES2021"` in `tsconfig.json`, do NOT enable `experimentalDecorators`.
 - **LLM model ID:** `@cf/meta/llama-3.3-70b-instruct-fp8-fast`. Use structured-output / JSON mode for classification. Tool-calling for chat.
 - **RPC client:** `viem` for Ethereum calls (lighter than ethers, Workers-friendly).
-- **Frontend:** React 19, Vite, Tailwind. Deployed on Pages. Uses `agents/react` hooks.
+- **Frontend:** React 19, Vite, Tailwind. Served by the same Worker via an `assets` binding (no separate Pages project). Uses `agents/react` hooks.
 - **Starter:** Begin from `npm create cloudflare@latest -- --template=cloudflare/agents-starter` and strip what we don't use.
 - **Wrangler bindings:**
   - `AI` (Workers AI)
@@ -182,7 +182,7 @@ Each milestone ends with something runnable. Don't move to the next until the cu
 
 **M9 — Frontend.** Build the three-panel React UI. `useAgent` for watchlist/dossier state, `useAgentChat` for chat stream. Render tool calls inline. Commit.
 
-**M10 — Polish.** Favicon, loading states, error toasts. Deploy to Pages + Workers. Verify scheduled refresh fires on production. Commit.
+**M10 — Polish.** Favicon, loading states, error toasts. Deploy the single Worker (with assets binding serving the React build). Verify scheduled refresh fires on production. Commit.
 
 **M11 — README + PROMPTS.** Write `README.md` (see §10) and `PROMPTS.md` (log every prompt used to generate substantive code). Add the deploy link. Final commit.
 

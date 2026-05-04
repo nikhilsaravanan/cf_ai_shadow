@@ -431,6 +431,26 @@ None this milestone — chat system prompt (`SHADOW_SYSTEM_PROMPT` in `src/serve
 
 ---
 
+## M10 — Polish + first real deploy
+
+### Meta-prompts
+
+- `i want to continue development of this project to a deployable state. previously we were working on the ui, as indicated by plan.md and the git history. i like the ui, and the chat works so i want to continue along the plan stages`
+  - Produced: scoped the remaining work to plan.md M10 + M11 (polish: favicon, loading + error toasts; rewrite "Pages" → single Worker + assets language in PRD; first real `wrangler deploy`; verify scheduled refresh; finalize README + PROMPTS; push to GitHub) and surfaced the gating decision (real deploy vs ready-to-deploy).
+  - Manual edits: none.
+- `b for q1 and yes git push on your own for q2`
+  - Produced: authorization to (a) execute the first real `wrangler deploy` against the user's Cloudflare account (M10 step 4) and (b) push the M10/M11 commits to `origin/main` (M11 step 8). Authorization scope is one-shot, not standing — future deploys / pushes still need explicit consent per CLAUDE.md.
+  - Manual edits: none.
+- `ive logged in` (after Claude Code prompted `! npx wrangler login`)
+  - Produced: signal that wrangler OAuth completed and `wrangler secret put` / `wrangler deploy` were unblocked. Triggered the four-secret upload (`ALCHEMY_API_KEY`, `ETHERSCAN_API_KEY`, `WORKERS_AI_API_TOKEN`, `GOOGLE_GENERATIVE_AI_API_KEY`) and the first real deploy (`https://cf_ai_shadow.nikhilsaravanan8.workers.dev`).
+  - Manual edits: none.
+
+### Application prompts
+
+None this milestone — polish was UI/infra-only (favicon, Toast component + provider, refresh-button spinner + error toast in `Dossier.tsx`, chat error/tool-error toasts in `Chat.tsx`, PRD scrub of "Pages" language). No new LLM calls, no chat/classification/summary prompt changes.
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 

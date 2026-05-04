@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAgent } from "agents/react";
 import {
 	RefreshCw,
+	Loader2,
 	Activity,
 	Layers,
 	Clock,
@@ -18,6 +19,7 @@ import type {
 	Classification,
 } from "../../walletAgent";
 import { Sparkline } from "./Sparkline";
+import { useToast } from "../Toast";
 
 type AgentLike = {
 	stub: {
@@ -83,9 +85,12 @@ function DossierPanel({
 	const state = walletAgent.state;
 	const dossier = state?.dossier;
 	const hasDossier = !!(dossier && dossier.version > 0);
+	const stateLoading = !state;
 
+	const toast = useToast();
 	const [tab, setTab] = useState<"overview" | "activity" | "risk">("overview");
 	const [recent, setRecent] = useState<TransactionRow[]>([]);
+	const [refreshing, setRefreshing] = useState(false);
 
 	useEffect(() => {
 		const stub = (walletAgent as unknown as AgentLike).stub;
@@ -104,8 +109,28 @@ function DossierPanel({
 	}, [walletAgent, state?.txCount, state?.updatedAt]);
 
 	const onRefresh = async () => {
-		await (walletAgent as unknown as AgentLike).stub.refresh();
+		if (refreshing) return;
+		setRefreshing(true);
+		try {
+			await (walletAgent as unknown as AgentLike).stub.refresh();
+		} catch (err) {
+			toast.push(
+				"error",
+				`Refresh failed: ${err instanceof Error ? err.message : String(err)}`,
+			);
+		} finally {
+			setRefreshing(false);
+		}
 	};
+
+	if (stateLoading) {
+		return (
+			<section className="glass flex h-full min-h-0 flex-col items-center justify-center rounded-2xl">
+				<Loader2 className="h-6 w-6 animate-spin text-brand-2" strokeWidth={2.2} />
+				<p className="mt-3 text-sm text-mute">Loading wallet…</p>
+			</section>
+		);
+	}
 
 	return (
 		<section className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto pr-1">
@@ -126,6 +151,7 @@ function DossierPanel({
 				tab={tab}
 				onTabChange={setTab}
 				onRefresh={onRefresh}
+				refreshing={refreshing}
 			/>
 
 			<LatestActivitiesCard rows={recent} />
@@ -261,6 +287,7 @@ function HeroCard({
 	tab,
 	onTabChange,
 	onRefresh,
+	refreshing,
 }: {
 	address: string;
 	txCount: number;
@@ -270,6 +297,7 @@ function HeroCard({
 	tab: "overview" | "activity" | "risk";
 	onTabChange: (t: "overview" | "activity" | "risk") => void;
 	onRefresh: () => Promise<void>;
+	refreshing: boolean;
 }) {
 	const tabs: { id: "overview" | "activity" | "risk"; label: string }[] = [
 		{ id: "overview", label: "Overview" },
@@ -304,10 +332,18 @@ function HeroCard({
 					<button
 						type="button"
 						onClick={onRefresh}
-						className="flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-ink backdrop-blur-md transition hover:border-brand/40 hover:bg-white/15 hover:text-brand-strong"
+						disabled={refreshing}
+						className="flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-ink backdrop-blur-md transition hover:border-brand/40 hover:bg-white/15 hover:text-brand-strong disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-white/20 disabled:hover:bg-white/10 disabled:hover:text-ink"
 					>
-						<RefreshCw className="h-3.5 w-3.5" strokeWidth={2.5} />
-						Refresh
+						{refreshing ? (
+							<Loader2
+								className="h-3.5 w-3.5 animate-spin"
+								strokeWidth={2.5}
+							/>
+						) : (
+							<RefreshCw className="h-3.5 w-3.5" strokeWidth={2.5} />
+						)}
+						{refreshing ? "Refreshing…" : "Refresh"}
 					</button>
 				</div>
 			</div>

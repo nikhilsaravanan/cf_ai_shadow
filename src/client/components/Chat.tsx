@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAgentChat } from "@cloudflare/ai-chat/react";
 import { ArrowUp, MessageSquare, ChevronDown, Sparkles } from "lucide-react";
+import { useToast } from "../Toast";
 
 export function Chat({
 	agent,
@@ -14,13 +15,53 @@ export function Chat({
 		agent: agent as any,
 	});
 	const [input, setInput] = useState("");
+	const toast = useToast();
+
+	const lastErrorRef = useRef<string | null>(null);
+	useEffect(() => {
+		const err = (chat as { error?: Error | null }).error;
+		const msg = err ? err.message || String(err) : null;
+		if (msg && msg !== lastErrorRef.current) {
+			lastErrorRef.current = msg;
+			toast.push("error", `Chat error: ${msg}`);
+		}
+		if (!msg) lastErrorRef.current = null;
+	}, [chat, toast]);
+
+	const seenToolErrorRef = useRef<Set<string>>(new Set());
+	useEffect(() => {
+		for (const m of chat.messages) {
+			for (const part of (m as UIMessage).parts) {
+				if (
+					part.type.startsWith("tool-") &&
+					String(part.state ?? "") === "output-error"
+				) {
+					const key = `${m.id}:${(part as { toolCallId?: string }).toolCallId ?? part.type}`;
+					if (!seenToolErrorRef.current.has(key)) {
+						seenToolErrorRef.current.add(key);
+						const err =
+							(part as { errorText?: string }).errorText ||
+							"tool call failed";
+						toast.push("error", `${part.type.replace(/^tool-/, "")}: ${err}`);
+					}
+				}
+			}
+		}
+	}, [chat.messages, toast]);
 
 	const onSubmit = async (e: FormEvent) => {
 		e.preventDefault();
 		const text = input.trim();
 		if (!text) return;
 		setInput("");
-		await chat.sendMessage({ text });
+		try {
+			await chat.sendMessage({ text });
+		} catch (err) {
+			toast.push(
+				"error",
+				`Send failed: ${err instanceof Error ? err.message : String(err)}`,
+			);
+		}
 	};
 
 	return (
