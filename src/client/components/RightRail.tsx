@@ -29,9 +29,11 @@ export function RightRail({
 	selected: string | null;
 }) {
 	return (
-		<div className="grid h-full min-h-0 min-w-0 grid-rows-[auto_1fr] gap-4 overflow-hidden">
+		<div className="flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden">
 			{selected ? <ProtocolsRail address={selected} /> : null}
-			<Chat agent={agent} selected={selected} />
+			<div className="min-h-0 min-w-0 flex-1">
+				<Chat agent={agent} selected={selected} />
+			</div>
 		</div>
 	);
 }

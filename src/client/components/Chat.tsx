@@ -65,7 +65,7 @@ export function Chat({
 	};
 
 	return (
-		<aside className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden glass rounded-2xl">
+		<aside className="flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden glass rounded-2xl">
 			<div className="flex items-start justify-between border-b border-edge px-5 py-4">
 				<div className="min-w-0">
 					<p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-mute-2">
