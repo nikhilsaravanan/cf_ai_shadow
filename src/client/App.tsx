@@ -1,19 +1,23 @@
 import { useState } from "react";
 import { useAgent } from "agents/react";
-import { Search, Bell, Settings as SettingsIcon, ChevronRight } from "lucide-react";
+import { Search, Bell, Settings as SettingsIcon, ChevronRight, LogOut } from "lucide-react";
 import type { ResearcherAgent, ResearcherState } from "../server";
 import { Watchlist } from "./components/Watchlist";
 import { Dossier } from "./components/Dossier";
 import { RightRail } from "./components/RightRail";
+import { useAuth, useAuthedAgentOptions } from "./lib/auth";
 
 const EMPTY_STATE: ResearcherState = { watchlist: [], createdAt: 0 };
 
 export function App() {
 	const [selected, setSelected] = useState<string | null>(null);
+	const { user, signOut } = useAuth();
+	const authedOptions = useAuthedAgentOptions(user.id);
 
 	const agent = useAgent<ResearcherAgent, ResearcherState>({
 		agent: "researcher-agent",
-		name: "default",
+		name: user.id,
+		...authedOptions,
 	});
 
 	const state = agent.state ?? EMPTY_STATE;
@@ -66,8 +70,20 @@ export function App() {
 									</span>
 								) : null}
 							</button>
-							<div className="ml-2 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-white/10 text-xs font-bold text-brand-strong backdrop-blur-md">
-								S
+							<button
+								type="button"
+								onClick={signOut}
+								aria-label="sign out"
+								title={user.email ?? "sign out"}
+								className="grid h-9 w-9 place-items-center rounded-lg text-mute hover:bg-white/5 hover:text-ink"
+							>
+								<LogOut className="h-4 w-4" strokeWidth={2} />
+							</button>
+							<div
+								className="ml-2 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-white/10 text-xs font-bold text-brand-strong backdrop-blur-md"
+								title={user.email ?? user.id}
+							>
+								{(user.email ?? user.id).charAt(0).toUpperCase()}
 							</div>
 						</div>
 					</header>

@@ -11,6 +11,7 @@ import {
 	Eye,
 } from "lucide-react";
 import type { ResearcherAgent, ResearcherState } from "../../server";
+import { useAuth } from "../lib/auth";
 
 type AgentLike = {
 	stub: {
@@ -67,6 +68,7 @@ export function Watchlist({
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [adding, setAdding] = useState(false);
+	const { signOut } = useAuth();
 
 	const onSubmit = async (e: FormEvent) => {
 		e.preventDefault();
@@ -261,6 +263,7 @@ export function Watchlist({
 			<div className="border-t border-edge px-3 py-3">
 				<button
 					type="button"
+					onClick={signOut}
 					className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-mute hover:bg-canvas hover:text-ink"
 				>
 					<LogOut className="h-4 w-4" strokeWidth={2} />

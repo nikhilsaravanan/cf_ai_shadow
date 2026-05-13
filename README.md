@@ -85,7 +85,7 @@ Mental model: one `WalletAgent` is one wallet's living dossier. The `ResearcherA
 
 ## Run it locally
 
-You need Node 20+ and four API keys (all free-tier):
+You need Node 20+, a Supabase project, and four API keys (all free-tier):
 
 | Key | Where to get it |
 |---|---|
@@ -94,14 +94,28 @@ You need Node 20+ and four API keys (all free-tier):
 | `WORKERS_AI_API_TOKEN` | Cloudflare dashboard → AI → Workers AI → API tokens |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | https://aistudio.google.com/apikey |
 
-Then:
+### Auth setup (Supabase)
+
+Shadow uses Supabase Auth for sign-in. Each authenticated user gets their own `ResearcherAgent` Durable Object (watchlist + chat history are scoped per-user); `WalletAgent` DOs remain shared across users (wallet data is public on-chain).
+
+1. Create a Supabase project at https://supabase.com.
+2. **Enable Google OAuth:** Authentication → Providers → Google → create a Google OAuth client in Google Cloud Console, paste the client ID + secret, and add `https://<your-project>.supabase.co/auth/v1/callback` to Google's authorized redirect URIs.
+3. **Email magic link** is on by default — no config needed.
+4. Copy `.env.example` to `.env.local` and fill in your project's URL + publishable key (Settings → API):
+   ```
+   VITE_SUPABASE_URL=https://<your-project>.supabase.co
+   VITE_SUPABASE_ANON_KEY=sb_publishable_xxxxxxxx
+   ```
+5. Update `wrangler.jsonc` `vars.SUPABASE_URL` to match.
+
+### Run
 
 ```bash
 git clone <this-repo>
 cd cf_ai_shadow
 npm install
 
-# create .dev.vars at the repo root with the four keys above:
+# create .dev.vars at the repo root with the four API keys above:
 cat > .dev.vars <<'EOF'
 ALCHEMY_API_KEY=...
 ETHERSCAN_API_KEY=...

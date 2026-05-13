@@ -3,6 +3,7 @@ import { callable, routeAgentRequest } from "agents";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { streamText, convertToModelMessages, tool, stepCountIs } from "ai";
 import { z } from "zod";
+import { authorize } from "./auth";
 import type { Dossier, TransactionRow } from "./walletAgent";
 
 export { WalletAgent } from "./walletAgent";
@@ -199,6 +200,8 @@ export class ResearcherAgent extends AIChatAgent<Env, ResearcherState> {
 
 export default {
 	async fetch(request, env): Promise<Response> {
+		const denial = await authorize(request, env);
+		if (denial) return denial;
 		return (
 			(await routeAgentRequest(request, env)) ?? new Response("Not found", { status: 404 })
 		);

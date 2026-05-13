@@ -22,7 +22,8 @@
 	},
 	"vars": {
 		"CLOUDFLARE_ACCOUNT_ID": "52d2759780ed12447a3c603ff79693e3",
-		"SHADOW_DEV": "0"
+		"SHADOW_DEV": "0",
+		"SUPABASE_URL": "https://mxtsdphcrpyfrustzqbq.supabase.co"
 	},
 	"kv_namespaces": [
 		{ "binding": "ABI_CACHE", "id": "90a7e6d1a274417b8310bc0f026098dc" }

@@ -1,6 +1,7 @@
 import { useAgent } from "agents/react";
 import { TrendingUp, ArrowUpRight } from "lucide-react";
 import type { WalletAgent, WalletState } from "../../walletAgent";
+import { useAuth, useAuthedAgentOptions } from "../lib/auth";
 import { Chat } from "./Chat";
 
 const PROTO_PALETTE = [
@@ -39,9 +40,12 @@ export function RightRail({
 }
 
 function ProtocolsRail({ address }: { address: string }) {
+	const { user } = useAuth();
+	const authedOptions = useAuthedAgentOptions(user.id);
 	const walletAgent = useAgent<WalletAgent, WalletState>({
 		agent: "wallet-agent",
 		name: address,
+		...authedOptions,
 	});
 	const protocols = walletAgent.state?.dossier?.topProtocols ?? [];
 	const total = protocols.reduce((s, p) => s + p.interactionCount, 0) || 1;

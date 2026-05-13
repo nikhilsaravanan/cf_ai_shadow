@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAgent } from "agents/react";
+import { useAuth, useAuthedAgentOptions } from "../lib/auth";
 import {
 	RefreshCw,
 	Loader2,
@@ -77,9 +78,12 @@ function DossierPanel({
 	parentAgent: unknown;
 	address: string;
 }) {
+	const { user } = useAuth();
+	const authedOptions = useAuthedAgentOptions(user.id);
 	const walletAgent = useAgent<WalletAgent, WalletState>({
 		agent: "wallet-agent",
 		name: address,
+		...authedOptions,
 	});
 
 	const state = walletAgent.state;
