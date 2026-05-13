@@ -463,6 +463,42 @@ None this milestone — purely documentation work; no LLM-facing prompts changed
 
 ---
 
+## M12 — Per-user auth (Supabase SSO)
+
+Post-assignment scope expansion authorized by the prompts below. Auth shipped after M11 (final assignment commit) so the assignment artifacts (`PRD.md`, `plan.md`, original `README.md` flow) describe the pre-auth state; this milestone supersedes those for the `ResearcherAgent` naming / DO ownership story. Updates here: `src/auth.ts` (JWKS + path-based authorization), `src/client/{lib/supabase.ts,lib/auth.tsx,AuthGate.tsx,SignIn.tsx}`, plus `query`/`queryDeps` threaded into every `useAgent` / `useAgentChat` call so the access token rides each WebSocket connection.
+
+### Meta-prompts
+
+- Framing prompt — moved from "global default DO" to "per-user DO", picked Supabase Auth over Clerk / Better Auth, locked Google OAuth + email magic link, decided to discard the legacy `"default"` state:
+
+  > right now the app's state including watched wallets, chat history, etc. is persisting across clients. can we implement an auth system using an sso? supabase should work fine but let me know if you have any other ideas and lets talk about it
+
+  - Produced: the auth design (Supabase + jose + JWKS verification in the Worker, JWT in WebSocket query string per Cloudflare's cross-domain-auth doc, `ResearcherAgent` keyed by `sub`, `WalletAgent` left shared) and the plan file at `~/.claude/plans/right-now-the-app-s-sleepy-teapot.md`.
+
+- Bug-driven prompts — these surfaced real defects after the first ship:
+
+  > make the log out button on the bottom left work too
+
+  - Produced: wired the pre-existing decorative "Log out" row in `Watchlist.tsx:262-269` to the `signOut()` from `useAuth()`. It had styling but no `onClick`.
+
+  > if i use google sign in in a different incognito window, it doesnt prompt me to choose an account and just returns to the previously signed in account
+
+  - Produced: passed `queryParams: { prompt: "select_account" }` to `supabase.auth.signInWithOAuth` in `SignIn.tsx`. Without it Google silently reuses the active browser-profile Google session and never shows the account chooser.
+
+- Sign-out report — wired but silently no-op'd; the default `scope: "global"` was blocking on a network call to Supabase's `/logout` endpoint:
+
+  > i cant log out of the account, so i cant test multiple accounts but the app works for one account so far. the data persists
+
+  - Produced: switched to `supabase.auth.signOut({ scope: "local" })` in `lib/auth.tsx` so sign-out clears the in-browser session immediately with no network round-trip, plus a fallback that purges `sb-*` localStorage keys and reloads on any error.
+
+Approval-only / interstitial messages ("ok ive installed it, go ahead with the plan", "ok that works", "ive done 1 and 2, now do the rest", etc.) are not logged per the protocol.
+
+### Application prompts
+
+None this milestone — auth is plumbing only. No LLM templates changed; `SHADOW_SYSTEM_PROMPT` in `src/server.ts` is unchanged.
+
+---
+
 <!--
 Template for future milestones — copy this block at the end of each milestone, fill it in, then commit.
 

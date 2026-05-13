@@ -78,8 +78,8 @@ Secrets (via `wrangler secret put` for prod; `.dev.vars` for local):
 
 ## Durable Object naming — load-bearing
 
-- `ResearcherAgent`: single MVP instance, name = `"default"`. In v2, name = authenticated user email.
-- `WalletAgent`: one per wallet, name = `address.toLowerCase()`.
+- `ResearcherAgent`: one DO per signed-in user, name = Supabase user UUID (the `sub` claim from the JWT). The legacy `"default"` instance from M1–M11 is orphaned (auth shipped post-M11; see PROMPTS.md M12).
+- `WalletAgent`: one per wallet, name = `address.toLowerCase()`. Shared across users — wallet data is public on-chain.
 
 Lowercasing matters. Mixed case means two DOs for the same wallet and double the Alchemy CU burn.
 
@@ -87,7 +87,7 @@ Lowercasing matters. Mixed case means two DOs for the same wallet and double the
 
 - Ethereum mainnet only. No L2s before M11 ships.
 - 200-tx cap per wallet per ingestion (Alchemy free tier + Llama latency).
-- No auth. Global singleton `ResearcherAgent` named `"default"`.
+- Auth: Supabase SSO (Google OAuth + email magic link). JWT verified in the Worker `fetch()` handler via JWKS before `routeAgentRequest`. For `/agents/researcher-agent/<name>/...` the path's `name` MUST equal the JWT `sub`; `/agents/wallet-agent/*` is reachable by any authed user. See `src/auth.ts`.
 - Shadow is read-only. **Never** call `writeContract`, `sendTransaction`, sign anything, or touch private keys. If a feature request implies signing, stop and ask.
 
 ## Repo rules
