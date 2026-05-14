@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
 	Plus,
 	X,
@@ -9,6 +9,8 @@ import {
 	HelpCircle,
 	LogOut,
 	Eye,
+	Pencil,
+	Check,
 } from "lucide-react";
 import type { ResearcherAgent, ResearcherState } from "../../server";
 import { useAuth } from "../lib/auth";
@@ -17,6 +19,7 @@ type AgentLike = {
 	stub: {
 		addToWatchlist: (address: string, label?: string) => Promise<unknown>;
 		removeFromWatchlist: (address: string) => Promise<unknown>;
+		renameInWatchlist: (address: string, label: string) => Promise<unknown>;
 	};
 };
 
@@ -68,7 +71,23 @@ export function Watchlist({
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [adding, setAdding] = useState(false);
+	const [renaming, setRenaming] = useState<string | null>(null);
+	const [renameDraft, setRenameDraft] = useState("");
 	const { signOut } = useAuth();
+
+	const beginRename = (address: string, currentLabel: string | undefined) => {
+		setRenaming(address);
+		setRenameDraft(currentLabel ?? "");
+	};
+	const cancelRename = () => setRenaming(null);
+	const commitRename = async () => {
+		if (!renaming) return;
+		await (agent as { stub: ResearcherAgent }).stub.renameInWatchlist(
+			renaming,
+			renameDraft,
+		);
+		setRenaming(null);
+	};
 
 	const onSubmit = async (e: FormEvent) => {
 		e.preventDefault();
@@ -100,6 +119,18 @@ export function Watchlist({
 		await (agent as { stub: ResearcherAgent }).stub.removeFromWatchlist(address);
 		if (selected === address) onSelect(null);
 	};
+
+	const renameFormRef = useRef<HTMLFormElement | null>(null);
+	useEffect(() => {
+		if (!renaming) return;
+		const onDocMouseDown = (e: MouseEvent) => {
+			if (!renameFormRef.current?.contains(e.target as Node)) {
+				setRenaming(null);
+			}
+		};
+		document.addEventListener("mousedown", onDocMouseDown);
+		return () => document.removeEventListener("mousedown", onDocMouseDown);
+	}, [renaming]);
 
 	return (
 		<aside className="flex h-full min-h-0 flex-col border-r border-edge bg-white/[0.04] backdrop-blur-xl">
@@ -147,6 +178,7 @@ export function Watchlist({
 							state.watchlist.map((entry) => {
 								const isActive = selected === entry.address;
 								const av = avatarFor(entry.label || entry.address);
+								const isRenaming = renaming === entry.address;
 								return (
 									<li
 										key={entry.address}
@@ -156,36 +188,103 @@ export function Watchlist({
 												: "hover:bg-white/[0.04]"
 										}`}
 									>
-										<button
-											type="button"
-											onClick={() => onSelect(entry.address)}
-											className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1.5 py-1.5 text-left"
-										>
-											<span
-												className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold ${av.className}`}
+										{isRenaming ? (
+											<form
+												ref={renameFormRef}
+												onSubmit={async (e) => {
+													e.preventDefault();
+													await commitRename();
+												}}
+												className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1.5 py-1.5"
 											>
-												{av.letter}
-											</span>
-											<span className="min-w-0 flex-1">
-												<span className="block truncate text-sm font-semibold text-ink">
-													{entry.label || "Unlabeled"}
+												<span
+													className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold ${av.className}`}
+												>
+													{av.letter}
 												</span>
-												<span className="block truncate font-mono text-[10px] text-mute">
-													{entry.address.slice(0, 10)}…{entry.address.slice(-6)}
-												</span>
-											</span>
-											{isActive ? (
-												<span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
-											) : null}
-										</button>
-										<button
-											type="button"
-											onClick={(e) => onRemove(e, entry.address)}
-											aria-label="remove"
-											className="mr-1 grid h-6 w-6 shrink-0 place-items-center rounded-full text-mute-2 opacity-0 transition group-hover:opacity-100 hover:bg-down/10 hover:text-down"
-										>
-											<X className="h-3 w-3" strokeWidth={2.5} />
-										</button>
+												<div className="min-w-0 flex-1">
+													<input
+														autoFocus
+														type="text"
+														value={renameDraft}
+														onChange={(e) =>
+															setRenameDraft(e.target.value)
+														}
+														onKeyDown={(e) => {
+															if (e.key === "Escape") {
+																e.preventDefault();
+																cancelRename();
+															}
+														}}
+														placeholder="label"
+														className="block w-full bg-transparent text-sm font-semibold text-ink placeholder:text-mute focus:outline-none"
+													/>
+													<span className="block truncate font-mono text-[10px] text-mute">
+														{entry.address.slice(0, 10)}…
+														{entry.address.slice(-6)}
+													</span>
+												</div>
+												<button
+													type="submit"
+													aria-label="save"
+													className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-mute hover:bg-brand-soft hover:text-brand-strong"
+												>
+													<Check className="h-3 w-3" strokeWidth={2.5} />
+												</button>
+												<button
+													type="button"
+													onClick={cancelRename}
+													aria-label="cancel"
+													className="mr-1 grid h-6 w-6 shrink-0 place-items-center rounded-full text-mute-2 hover:bg-white/5 hover:text-ink"
+												>
+													<X className="h-3 w-3" strokeWidth={2.5} />
+												</button>
+											</form>
+										) : (
+											<>
+												<button
+													type="button"
+													onClick={() => onSelect(entry.address)}
+													className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1.5 py-1.5 text-left"
+												>
+													<span
+														className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold ${av.className}`}
+													>
+														{av.letter}
+													</span>
+													<span className="min-w-0 flex-1">
+														<span className="block truncate text-sm font-semibold text-ink">
+															{entry.label || "Unlabeled"}
+														</span>
+														<span className="block truncate font-mono text-[10px] text-mute">
+															{entry.address.slice(0, 10)}…
+															{entry.address.slice(-6)}
+														</span>
+													</span>
+													{isActive ? (
+														<span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
+													) : null}
+												</button>
+												<button
+													type="button"
+													onClick={() =>
+														beginRename(entry.address, entry.label)
+													}
+													aria-label="rename"
+													className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-mute-2 opacity-0 transition group-hover:opacity-100 hover:bg-white/5 hover:text-ink"
+												>
+													<Pencil className="h-3 w-3" strokeWidth={2.5} />
+												</button>
+												<button
+													type="button"
+													onClick={(e) => onRemove(e, entry.address)}
+													aria-label="remove"
+													className="mr-1 grid h-6 w-6 shrink-0 place-items-center rounded-full text-mute-2 opacity-0 transition group-hover:opacity-100 hover:bg-down/10 hover:text-down"
+												>
+													<X className="h-3 w-3" strokeWidth={2.5} />
+												</button>
+											</>
+										)}
 									</li>
 								);
 							})

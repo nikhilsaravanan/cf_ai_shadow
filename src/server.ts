@@ -81,6 +81,17 @@ export class ResearcherAgent extends AIChatAgent<Env, ResearcherState> {
 		return next;
 	}
 
+	@callable({ description: "Rename a watched wallet. Empty label clears it." })
+	async renameInWatchlist(address: string, label: string): Promise<Watchlist> {
+		const addr = address.toLowerCase();
+		const trimmed = label.trim();
+		const next = (this.state.watchlist ?? []).map((e) =>
+			e.address === addr ? { ...e, label: trimmed || undefined } : e,
+		);
+		this.setState({ ...this.state, watchlist: next });
+		return next;
+	}
+
 	@callable({ description: "Return the current watchlist." })
 	async getWatchlist(): Promise<Watchlist> {
 		return this.state.watchlist ?? [];
