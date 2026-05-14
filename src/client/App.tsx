@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useAgent } from "agents/react";
-import { Search, Bell, Settings as SettingsIcon, ChevronRight, LogOut } from "lucide-react";
+import { Bell, Settings as SettingsIcon, ChevronRight, LogOut } from "lucide-react";
 import type { ResearcherAgent, ResearcherState } from "../server";
 import { Watchlist } from "./components/Watchlist";
 import { Dossier } from "./components/Dossier";
 import { RightRail } from "./components/RightRail";
+import { SearchCombobox } from "./components/SearchCombobox";
 import { useAuth, useAuthedAgentOptions } from "./lib/auth";
 
 const EMPTY_STATE: ResearcherState = { watchlist: [], createdAt: 0 };
@@ -36,12 +37,16 @@ export function App() {
 
 				<div className="grid min-h-0 grid-rows-[64px_1fr]">
 					<header className="flex items-center gap-4 border-b border-edge px-6">
-						<div className="glass-soft flex w-full max-w-md items-center gap-2 rounded-xl px-3 py-2 text-sm text-mute">
-							<Search className="h-4 w-4 text-mute-2" strokeWidth={2} />
-							<span className="select-none">
-								Type a wallet address or label…
-							</span>
-						</div>
+						<SearchCombobox
+							watchlist={state.watchlist}
+							onSelect={setSelected}
+							onAddAndSelect={async (address) => {
+								await (
+									agent as unknown as { stub: ResearcherAgent }
+								).stub.addToWatchlist(address);
+								setSelected(address);
+							}}
+						/>
 						<nav className="ml-2 flex items-center gap-1.5 text-xs">
 							<span className="text-mute">Welcome</span>
 							<ChevronRight
